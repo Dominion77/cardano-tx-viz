@@ -231,17 +231,6 @@ cardano-tx-viz --hash <tx-hash> --network preview
 # 5. Press 'r' to copy the raw CBOR for testing
 ```
 
-## Publishing to crates.io
-
-If you're maintaining this package, here's how to publish updates:
-
-```bash
-# Verify package is ready
-cargo publish --dry-run
-
-# Publish to crates.io
-cargo publish
-```
 
 ## Contributing
 
@@ -253,15 +242,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Development Setup
-
-```bash
-git clone https://github.com/yourusername/cardano-tx-viz.git
-cd cardano-tx-viz
-cargo build
-cargo test
-cargo run
-```
 
 ## Dependencies
 
