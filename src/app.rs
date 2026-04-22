@@ -335,23 +335,36 @@ impl App {
                     if should_expand {
                         self.tree_state.expanded[self.tree_state.selected_index] = 
                             !self.tree_state.expanded[self.tree_state.selected_index];
-                        self.rebuild_visible_nodes();
+                        // Update node's expanded state
+                        match &mut self.tree_state.visible_nodes[self.tree_state.selected_index] {
+                            TreeNode::InputsHeader { expanded, .. } => *expanded = !*expanded,
+                            TreeNode::OutputsHeader { expanded, .. } => *expanded = !*expanded,
+                            TreeNode::RedeemersHeader { expanded, .. } => *expanded = !*expanded,
+                            TreeNode::Metadata { expanded } => *expanded = !*expanded,
+                            _ => {}
+                        }
                     }
                 }
             }
             KeyCode::Left => {
                 if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
                     let should_collapse = match node {
-                        TreeNode::InputsHeader { .. } => true,
-                        TreeNode::OutputsHeader { .. } => true,
-                        TreeNode::RedeemersHeader { .. } => true,
-                        TreeNode::Metadata { .. } => true,
+                        TreeNode::InputsHeader { expanded: true, .. } => true,
+                        TreeNode::OutputsHeader { expanded: true, .. } => true,
+                        TreeNode::RedeemersHeader { expanded: true, .. } => true,
+                        TreeNode::Metadata { expanded: true } => true,
                         _ => false,
                     };
                     
-                    if should_collapse && self.tree_state.expanded[self.tree_state.selected_index] {
+                    if should_collapse {
                         self.tree_state.expanded[self.tree_state.selected_index] = false;
-                        self.rebuild_visible_nodes();
+                        match &mut self.tree_state.visible_nodes[self.tree_state.selected_index] {
+                            TreeNode::InputsHeader { expanded, .. } => *expanded = false,
+                            TreeNode::OutputsHeader { expanded, .. } => *expanded = false,
+                            TreeNode::RedeemersHeader { expanded, .. } => *expanded = false,
+                            TreeNode::Metadata { expanded } => *expanded = false,
+                            _ => {}
+                        }
                     }
                 }
             }
@@ -364,8 +377,13 @@ impl App {
             KeyCode::Char('r') => {
                 self.copy_raw_hex_to_clipboard();
             }
-            KeyCode::Char('q') | KeyCode::Esc => {
-                // Handled by main loop
+            KeyCode::PageUp => {
+                if self.detail_scroll > 0 {
+                    self.detail_scroll = self.detail_scroll.saturating_sub(5);
+                }
+            }
+            KeyCode::PageDown => {
+                self.detail_scroll += 5;
             }
             _ => {}
         }
@@ -419,15 +437,23 @@ impl App {
                 self.cursor_position = self.input_hash.len();
             }
             KeyCode::Char('v') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                // Paste from clipboard
-                if let Ok(mut clipboard) = arboard::Clipboard::new() {
-                    if let Ok(text) = clipboard.get_text() {
-                        let hex_only: String = text.chars()
+                match crate::clipboard::get_clipboard_text() {
+                    Ok(text) => {
+                        // Filter to hex characters only
+                        let hex_only: String = text
+                            .chars()
                             .filter(|c| c.is_ascii_hexdigit())
                             .take(64 - self.input_hash.len())
                             .collect();
-                        self.input_hash.push_str(&hex_only);
-                        self.cursor_position = self.input_hash.len();
+                        
+                        if !hex_only.is_empty() {
+                            self.input_hash.push_str(&hex_only);
+                            self.cursor_position = self.input_hash.len();
+                            self.status_message = Some(format!("✓ Pasted {} characters", hex_only.len()));
+                        }
+                    }
+                    Err(e) => {
+                        self.status_message = Some(format!("Failed to paste: {}", e));
                     }
                 }
             }
@@ -435,61 +461,203 @@ impl App {
         }
     }
 
-    fn rebuild_visible_nodes(&mut self) {
-        // Rebuild tree based on expansion state
-        // This is simplified - full implementation would filter nodes
-    }
-
     fn copy_selected_to_clipboard(&self) {
-        if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
-            let text = node.display_text();
-            if let Err(e) = crate::clipboard::copy_to_clipboard(&text) {
-                error!("Failed to copy to clipboard: {}", e);
-            } else {
-                info!("Copied to clipboard: {}", text);
+        let result = if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
+            match node {
+                TreeNode::Input { index, .. } => {
+                    if let Some(tx) = self.get_current_tx() {
+                        if let Some(input) = tx.inputs.get(*index) {
+                            let content = format!(
+                                "Input #{}\nTransaction: {}\nIndex: {}\nAddress: {}",
+                                index, input.tx_hash, input.index, input.address
+                            );
+                            crate::clipboard::copy_to_clipboard(&content)
+                        } else {
+                            crate::clipboard::copy_to_clipboard(&node.display_text())
+                        }
+                    } else {
+                        crate::clipboard::copy_to_clipboard(&node.display_text())
+                    }
+                }
+                TreeNode::Output { index, .. } => {
+                    if let Some(tx) = self.get_current_tx() {
+                        if let Some(output) = tx.outputs.get(*index) {
+                            let content = format!(
+                                "Output #{}\nAddress: {}\nValue: {}",
+                                index, 
+                                output.address,
+                                output.value.iter()
+                                    .map(|a| format!("{} {}", a.amount, a.asset_name))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
+                            crate::clipboard::copy_to_clipboard(&content)
+                        } else {
+                            crate::clipboard::copy_to_clipboard(&node.display_text())
+                        }
+                    } else {
+                        crate::clipboard::copy_to_clipboard(&node.display_text())
+                    }
+                }
+                TreeNode::InputDatum { input_index } => {
+                    if let Some(tx) = self.get_current_tx() {
+                        if let Some(input) = tx.inputs.get(*input_index) {
+                            if let Some(datum) = &input.datum {
+                                crate::clipboard::copy_plutus_data(&datum.decoded)
+                            } else {
+                                Ok(())
+                            }
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Ok(())
+                    }
+                }
+                TreeNode::OutputDatum { output_index } => {
+                    if let Some(tx) = self.get_current_tx() {
+                        if let Some(output) = tx.outputs.get(*output_index) {
+                            if let Some(datum) = &output.datum {
+                                crate::clipboard::copy_plutus_data(&datum.decoded)
+                            } else {
+                                Ok(())
+                            }
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Ok(())
+                    }
+                }
+                TreeNode::Redeemer { index, .. } => {
+                    if let Some(tx) = self.get_current_tx() {
+                        if let Some(redeemer) = tx.redeemers.get(*index) {
+                            crate::clipboard::copy_plutus_data(&redeemer.data)
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Ok(())
+                    }
+                }
+                TreeNode::Metadata { .. } => {
+                    if let Some(tx) = self.get_current_tx() {
+                        if let Some(metadata) = &tx.metadata {
+                            if let Ok(json) = serde_json::to_string_pretty(metadata) {
+                                crate::clipboard::copy_to_clipboard(&json)
+                            } else {
+                                Ok(())
+                            }
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Ok(())
+                    }
+                }
+                _ => crate::clipboard::copy_to_clipboard(&node.display_text()),
             }
+        } else {
+            Ok(())
+        };
+
+        if let Err(e) = result {
+            self.status_message = Some(format!("Failed to copy: {}", e));
+        } else {
+            self.status_message = Some("✓ Copied to clipboard".to_string());
         }
     }
 
     fn copy_policy_id_to_clipboard(&self) {
-        // Extract policy ID from selected asset
-        if let FetchState::Done(tx) = &self.fetch_state {
+        let result = if let FetchState::Done(tx) = &self.fetch_state {
             if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
                 match node {
                     TreeNode::Output { index, .. } => {
                         if let Some(output) = tx.outputs.get(*index) {
-                            if let Some(asset) = output.value.first() {
-                                let _ = crate::clipboard::copy_to_clipboard(&asset.policy_id);
+                            if let Some(asset) = output.value.iter().find(|a| a.policy_id != "ada") {
+                                crate::clipboard::copy_policy_id(&asset.policy_id)
+                            } else {
+                                // Copy ADA as fallback
+                                crate::clipboard::copy_to_clipboard("ada")
                             }
+                        } else {
+                            Ok(())
                         }
                     }
-                    _ => {}
+                    TreeNode::Input { index, .. } => {
+                        if let Some(input) = tx.inputs.get(*index) {
+                            if let Some(asset) = input.value.iter().find(|a| a.policy_id != "ada") {
+                                crate::clipboard::copy_policy_id(&asset.policy_id)
+                            } else {
+                                crate::clipboard::copy_to_clipboard("ada")
+                            }
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    _ => Ok(()),
                 }
+            } else {
+                Ok(())
             }
+        } else {
+            Ok(())
+        };
+
+        if let Err(e) = result {
+            self.status_message = Some(format!("Failed to copy policy ID: {}", e));
+        } else {
+            self.status_message = Some("✓ Policy ID copied to clipboard".to_string());
         }
     }
 
     fn copy_raw_hex_to_clipboard(&self) {
-        if let FetchState::Done(tx) = &self.fetch_state {
+        let result = if let FetchState::Done(tx) = &self.fetch_state {
             if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
                 match node {
                     TreeNode::OutputDatum { output_index } => {
                         if let Some(output) = tx.outputs.get(*output_index) {
                             if let Some(datum) = &output.datum {
-                                let _ = crate::clipboard::copy_to_clipboard(&datum.raw_cbor);
+                                crate::clipboard::copy_raw_cbor(&datum.raw_cbor)
+                            } else {
+                                Ok(())
                             }
+                        } else {
+                            Ok(())
                         }
                     }
                     TreeNode::InputDatum { input_index } => {
                         if let Some(input) = tx.inputs.get(*input_index) {
                             if let Some(datum) = &input.datum {
-                                let _ = crate::clipboard::copy_to_clipboard(&datum.raw_cbor);
+                                crate::clipboard::copy_raw_cbor(&datum.raw_cbor)
+                            } else {
+                                Ok(())
                             }
+                        } else {
+                            Ok(())
                         }
                     }
-                    _ => {}
+                    TreeNode::Redeemer { index, .. } => {
+                        if let Some(redeemer) = tx.redeemers.get(*index) {
+                            // For redeemers, copy the decoded data as pretty-printed
+                            crate::clipboard::copy_plutus_data(&redeemer.data)
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    _ => Ok(()),
                 }
+            } else {
+                Ok(())
             }
+        } else {
+            Ok(())
+        };
+
+        if let Err(e) = result {
+            self.status_message = Some(format!("Failed to copy raw data: {}", e));
+        } else {
+            self.status_message = Some("✓ Raw data copied to clipboard".to_string());
         }
     }
 
