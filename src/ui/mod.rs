@@ -70,7 +70,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                 break;
                             }
                             
-                            // Handle tree navigation
+                            // Handle tree navigation keys directly, pass others to app
                             match key.code {
                                 KeyCode::Up => {
                                     tree_state.select_previous();
@@ -110,7 +110,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                         }
                                     }
                                 }
-                                _ => {}
+                                _ => {
+                                    // Pass all other keys to the app
+                                    app.handle_key(key);
+                                }
                             }
                             
                             // Update scroll based on visible area
@@ -123,9 +126,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                 app.input_mode = InputMode::Normal;
                                 continue;
                             }
+                            // Pass all keys to app in editing mode
+                            app.handle_key(key);
                         }
                     }
-                    app.handle_key(key);
                 }
             }
         }

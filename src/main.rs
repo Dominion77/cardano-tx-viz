@@ -11,7 +11,7 @@ use cardano_tx_viz::fetcher::Network;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Transaction hash to inspect
-    #[arg(short, long)]
+    #[arg(short = 't', long)]
     hash: Option<String>,
 
     /// Cardano network (mainnet, preprod, preview)

@@ -1,11 +1,10 @@
-use cardano_tx_viz::decoder::{TxParser, TxView, AssetView, PlutusNode};
-use cardano_tx_viz::fetcher::{FetcherConfig, Network, TxFetcher};
+use cardano_tx_viz::decoder::{TxParser, PlutusNode, AssetView};
 
 #[tokio::test]
 async fn test_parse_simple_transaction() {
     // This test would use a real mainnet transaction CBOR
     // For now, we'll test the parser structure
-    let mut parser = TxParser::new();
+    let _parser = TxParser::new();
     
     // A minimal transaction CBOR would go here
     // This is a placeholder for actual test data

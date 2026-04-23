@@ -135,7 +135,7 @@ impl PlutusNode {
         }
     }
 
-    fn to_string_compact(&self) -> String {
+    pub fn to_string_compact(&self) -> String {
         match self {
             PlutusNode::Constr(tag, fields) => {
                 if fields.is_empty() {

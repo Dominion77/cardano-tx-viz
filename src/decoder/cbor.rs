@@ -107,6 +107,7 @@ mod tests {
     fn test_decode_constr() {
         let constr = Constr {
             tag: 121,
+            any_constructor: None,
             fields: vec![
                 PlutusData::BigInt(BigInt::Int(1.into())),
                 PlutusData::BigInt(BigInt::Int(2.into())),

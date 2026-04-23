@@ -17,7 +17,7 @@ pub trait TxFetcher: Send + Sync {
     async fn fetch_datum(&self, datum_hash: &str) -> Result<Vec<u8>>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Network {
     Mainnet,
     Preprod,
@@ -38,6 +38,14 @@ impl Network {
             Network::Mainnet => "https://api.koios.rest/api/v1",
             Network::Preprod => "https://preprod.koios.rest/api/v1",
             Network::Preview => "https://preview.koios.rest/api/v1",
+        }
+    }
+
+    pub fn to_string(&self) -> &'static str {
+        match self {
+            Network::Mainnet => "mainnet",
+            Network::Preprod => "preprod",
+            Network::Preview => "preview",
         }
     }
 }

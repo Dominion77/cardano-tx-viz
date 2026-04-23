@@ -8,8 +8,13 @@ async fn main() -> anyhow::Result<()> {
     println!("=== Cardano TX Viz Manual Test ===\n");
     
     // Test 1: Fetch known transaction
-    println!("Test 1: Fetching known mainnet transaction...");
+    println!("Test 1: Testing Koios API connection...");
+    println!("NOTE: Use a real mainnet transaction hash to test fetching");
+    println!("Example: cardano-tx-viz --hash <real-tx-hash>");
+    
+    // This is a placeholder hash - replace with a real one to test
     let tx_hash = "f2754b2d3a9e9e6f4b3e3d9f8c5e5a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8";
+    println!("Testing with hash: {}", tx_hash);
     
     let fetcher_config = FetcherConfig::Koios { 
         network: Network::Mainnet 
@@ -42,13 +47,18 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 Err(e) => {
-                    println!("Failed to parse transaction: {}", e);
+                    println!("Failed to parse transaction: {:#}", e);
                 }
             }
         }
         Err(e) => {
-            println!("Failed to fetch transaction: {}", e);
-            println!("  (This is expected if offline or network issues)");
+            println!("Failed to fetch transaction:");
+            println!("  Error: {:#}", e);
+            println!("\nPossible causes:");
+            println!("  - Invalid transaction hash (not a real transaction)");
+            println!("  - Network connectivity issues");
+            println!("  - Koios API temporarily unavailable");
+            println!("  - Transaction not on mainnet (try --network preprod/preview)");
         }
     }
     

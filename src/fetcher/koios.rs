@@ -29,7 +29,7 @@ impl KoiosFetcher {
             .header("Accept", "application/json")
             .send()
             .await
-            .context("Failed to send request to Koios")?;
+            .context(format!("Failed to connect to Koios API at {}", url))?;
 
         let status = response.status();
         if !status.is_success() {
@@ -39,12 +39,13 @@ impl KoiosFetcher {
                 .unwrap_or_else(|_| "Unknown error".to_string());
             
             if status.as_u16() == 404 {
-                return Err(anyhow!("Transaction not found"));
+                return Err(anyhow!("Transaction not found on {} network", self.network.to_string()));
             }
             
             return Err(anyhow!(
-                "Koios API error ({}): {}",
+                "Koios API returned error {} for {}: {}",
                 status.as_u16(),
+                url,
                 error_text
             ));
         }
@@ -52,12 +53,12 @@ impl KoiosFetcher {
         let koios_response: Vec<T> = response
             .json()
             .await
-            .context("Failed to parse Koios response")?;
+            .context("Failed to parse Koios API response (invalid JSON)")?;
         
         koios_response
             .into_iter()
             .next()
-            .ok_or_else(|| anyhow!("Empty response from Koios"))
+            .ok_or_else(|| anyhow!("Transaction not found (empty response from Koios)"))
     }
 }
 
@@ -65,19 +66,21 @@ impl KoiosFetcher {
 impl TxFetcher for KoiosFetcher {
     async fn fetch(&self, hash: &str) -> Result<RawTx> {
         #[derive(Deserialize)]
-        struct TxInfoResponse {
+        struct TxCborResponse {
             tx_hash: String,
-            tx_cbor: String,
+            cbor: String,
         }
 
         let body = json!({
             "_tx_hashes": [hash]
         });
 
-        let response: TxInfoResponse = self.post("/tx_info", body).await?;
+        let response: TxCborResponse = self.post("/tx_cbor", body)
+            .await
+            .context(format!("Failed to fetch transaction {} from Koios", hash))?;
         
-        let cbor = hex::decode(&response.tx_cbor)
-            .context("Failed to decode CBOR hex from Koios")?;
+        let cbor = hex::decode(&response.cbor)
+            .context("Failed to decode CBOR hex from Koios response")?;
 
         Ok(RawTx {
             hash: response.tx_hash,

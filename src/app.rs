@@ -109,6 +109,7 @@ pub struct App {
     pub cursor_position: usize,
     pub network: Network,
     pub fetcher: std::sync::Arc<dyn TxFetcher>,
+    pub fetcher_name: String,
     pub tx_parser: TxParser,
     pub tree_state: TreeState,
     pub detail_scroll: usize,
@@ -123,6 +124,11 @@ impl App {
     pub fn new(network: Network, fetcher_config: FetcherConfig) -> Self {
         let (event_tx, event_rx) = mpsc::unbounded_channel();
         
+        let fetcher_name = match &fetcher_config {
+            FetcherConfig::Blockfrost { .. } => "Blockfrost",
+            FetcherConfig::Koios { .. } => "Koios",
+        }.to_string();
+        
         Self {
             fetch_state: FetchState::Idle,
             input_hash: String::new(),
@@ -130,6 +136,7 @@ impl App {
             cursor_position: 0,
             network,
             fetcher: std::sync::Arc::from(fetcher_config.create_fetcher()),
+            fetcher_name,
             tx_parser: TxParser::new(),
             tree_state: TreeState {
                 selected_index: 0,
@@ -180,8 +187,9 @@ impl App {
                     }
                     Err(e) => {
                         error!("Failed to fetch transaction: {}", e);
-                        self.fetch_state = FetchState::Error(e.to_string());
-                        self.status_message = Some(format!("Error: {}", e));
+                        let error_msg = format!("{:#}", e); // Use alternate format for full error chain
+                        self.fetch_state = FetchState::Error(error_msg.clone());
+                        self.status_message = Some(format!("ERROR: {}", error_msg));
                     }
                 }
             }
@@ -205,7 +213,7 @@ impl App {
         }
     }
 
-    fn build_tree_from_tx(&mut self, tx: &TxView) {
+    pub fn build_tree_from_tx(&mut self, tx: &TxView) {
         let mut nodes = Vec::new();
         let mut expanded = Vec::new();
         
@@ -303,7 +311,11 @@ impl App {
                 self.input_mode = InputMode::Editing;
                 self.input_hash.clear();
                 self.cursor_position = 0;
-                self.status_message = Some("Enter transaction hash...".to_string());
+                self.status_message = Some(format!(
+                    "Enter tx hash (64 hex chars) | Network: {} | Using: {} API",
+                    self.network.to_string(),
+                    self.fetcher_name
+                ));
             }
             KeyCode::Enter => {
                 if !self.input_hash.is_empty() {
