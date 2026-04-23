@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use arboard::Clipboard;
-use tracing::{debug, error, warn};
+use tracing::debug;
 
 /// Copy text to system clipboard
 pub fn copy_to_clipboard(text: &str) -> Result<()> {
@@ -211,7 +211,7 @@ mod tests {
             return;
         }
         
-        // These might fail on headless systems, so we ignore errors
+        // These might fail on headless systems, so I ignore errors
         let _ = copy_with_prefix("test", "value");
         let _ = copy_policy_id("test_policy");
         let _ = copy_raw_cbor("abcdef");

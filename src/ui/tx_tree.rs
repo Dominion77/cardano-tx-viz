@@ -3,9 +3,9 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, StatefulWidget, Widget},
+    widgets::{Block, Borders, StatefulWidget, Widget},
 };
-use crate::app::{App, FetchState, TreeNode};
+use crate::app::TreeNode;
 
 #[derive(Debug, Clone)]
 pub struct TxTreeWidget<'a> {

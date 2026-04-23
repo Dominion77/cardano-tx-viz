@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
+use crossterm::event::KeyCode;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use std::time::{Duration, Instant};
 
 use crate::decoder::{TxParser, TxView};
@@ -107,7 +108,7 @@ pub struct App {
     pub input_mode: InputMode,
     pub cursor_position: usize,
     pub network: Network,
-    pub fetcher: Box<dyn TxFetcher>,
+    pub fetcher: std::sync::Arc<dyn TxFetcher>,
     pub tx_parser: TxParser,
     pub tree_state: TreeState,
     pub detail_scroll: usize,
@@ -128,7 +129,7 @@ impl App {
             input_mode: InputMode::Normal,
             cursor_position: 0,
             network,
-            fetcher: fetcher_config.create_fetcher(),
+            fetcher: std::sync::Arc::from(fetcher_config.create_fetcher()),
             tx_parser: TxParser::new(),
             tree_state: TreeState {
                 selected_index: 0,
@@ -152,13 +153,14 @@ impl App {
         
         self.fetch_state = FetchState::Loading;
         self.input_hash = hash.clone();
-        self.status_message = Some(format!("Fetching transaction {}...", hash));
+        self.status_message = Some(format!("Fetching transaction {}...", &hash));
         
-        let fetcher = self.fetcher.clone_box();
+        let fetcher = self.fetcher.clone();
         let event_tx = self.event_tx.clone();
+        let hash_for_closure = hash.clone();
         
         tokio::spawn(async move {
-            let result = fetch_transaction(fetcher, &hash).await;
+            let result = fetch_transaction(fetcher, &hash_for_closure).await;
             let _ = event_tx.send(AppEvent::FetchComplete(result));
         });
         
@@ -173,13 +175,13 @@ impl App {
                         info!("Successfully fetched transaction: {}", tx_view.hash);
                         self.build_tree_from_tx(&tx_view);
                         self.fetch_state = FetchState::Done(tx_view);
-                        self.status_message = Some(format!("✓ Transaction {} loaded", self.input_hash));
+                        self.status_message = Some(format!("Transaction {} loaded", self.input_hash));
                         self.input_mode = InputMode::Normal;
                     }
                     Err(e) => {
                         error!("Failed to fetch transaction: {}", e);
                         self.fetch_state = FetchState::Error(e.to_string());
-                        self.status_message = Some(format!("✗ Error: {}", e));
+                        self.status_message = Some(format!("Error: {}", e));
                     }
                 }
             }
@@ -194,7 +196,7 @@ impl App {
             }
             AppEvent::Error(msg) => {
                 error!("App error: {}", msg);
-                self.status_message = Some(format!("✗ {}", msg));
+                self.status_message = Some(format!("{}", msg));
             }
             AppEvent::Tick => {
                 self.spinner_frame = (self.spinner_frame + 1) % 10;
@@ -289,8 +291,6 @@ impl App {
     }
 
     pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) {
-        use crossterm::event::{KeyCode, KeyModifiers};
-        
         match self.input_mode {
             InputMode::Normal => self.handle_normal_key(key),
             InputMode::Editing => self.handle_editing_key(key),
@@ -298,8 +298,6 @@ impl App {
     }
 
     fn handle_normal_key(&mut self, key: crossterm::event::KeyEvent) {
-        use crossterm::event::{KeyCode, KeyModifiers};
-        
         match key.code {
             KeyCode::Char('/') | KeyCode::Char('i') => {
                 self.input_mode = InputMode::Editing;
@@ -403,6 +401,27 @@ impl App {
                 self.input_mode = InputMode::Normal;
                 self.status_message = None;
             }
+            KeyCode::Char('v') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                match crate::clipboard::get_clipboard_text() {
+                    Ok(text) => {
+                        // Filter to hex characters only
+                        let hex_only: String = text
+                            .chars()
+                            .filter(|c| c.is_ascii_hexdigit())
+                            .take(64 - self.input_hash.len())
+                            .collect();
+                        
+                        if !hex_only.is_empty() {
+                            self.input_hash.push_str(&hex_only);
+                            self.cursor_position = self.input_hash.len();
+                            self.status_message = Some(format!("Pasted {} characters", hex_only.len()));
+                        }
+                    }
+                    Err(_) => {
+                        self.status_message = Some("Failed to access clipboard".to_string());
+                    }
+                }
+            }
             KeyCode::Char(c) => {
                 if c.is_ascii_hexdigit() && self.input_hash.len() < 64 {
                     self.input_hash.insert(self.cursor_position, c);
@@ -436,32 +455,11 @@ impl App {
             KeyCode::End => {
                 self.cursor_position = self.input_hash.len();
             }
-            KeyCode::Char('v') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                match crate::clipboard::get_clipboard_text() {
-                    Ok(text) => {
-                        // Filter to hex characters only
-                        let hex_only: String = text
-                            .chars()
-                            .filter(|c| c.is_ascii_hexdigit())
-                            .take(64 - self.input_hash.len())
-                            .collect();
-                        
-                        if !hex_only.is_empty() {
-                            self.input_hash.push_str(&hex_only);
-                            self.cursor_position = self.input_hash.len();
-                            self.status_message = Some(format!("✓ Pasted {} characters", hex_only.len()));
-                        }
-                    }
-                    Err(e) => {
-                        self.status_message = Some(format!("Failed to paste: {}", e));
-                    }
-                }
-            }
             _ => {}
         }
     }
 
-    fn copy_selected_to_clipboard(&self) {
+    fn copy_selected_to_clipboard(&mut self) {
         let result = if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
             match node {
                 TreeNode::Input { index, .. } => {
@@ -564,11 +562,11 @@ impl App {
         if let Err(e) = result {
             self.status_message = Some(format!("Failed to copy: {}", e));
         } else {
-            self.status_message = Some("✓ Copied to clipboard".to_string());
+            self.status_message = Some("Copied to clipboard".to_string());
         }
     }
 
-    fn copy_policy_id_to_clipboard(&self) {
+    fn copy_policy_id_to_clipboard(&mut self) {
         let result = if let FetchState::Done(tx) = &self.fetch_state {
             if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
                 match node {
@@ -607,11 +605,11 @@ impl App {
         if let Err(e) = result {
             self.status_message = Some(format!("Failed to copy policy ID: {}", e));
         } else {
-            self.status_message = Some("✓ Policy ID copied to clipboard".to_string());
+            self.status_message = Some("Policy ID copied to clipboard".to_string());
         }
     }
 
-    fn copy_raw_hex_to_clipboard(&self) {
+    fn copy_raw_hex_to_clipboard(&mut self) {
         let result = if let FetchState::Done(tx) = &self.fetch_state {
             if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
                 match node {
@@ -657,7 +655,7 @@ impl App {
         if let Err(e) = result {
             self.status_message = Some(format!("Failed to copy raw data: {}", e));
         } else {
-            self.status_message = Some("✓ Raw data copied to clipboard".to_string());
+            self.status_message = Some("Raw data copied to clipboard".to_string());
         }
     }
 
@@ -674,7 +672,7 @@ impl App {
     }
 }
 
-async fn fetch_transaction(fetcher: Box<dyn TxFetcher>, hash: &str) -> Result<TxView> {
+async fn fetch_transaction(fetcher: std::sync::Arc<dyn TxFetcher>, hash: &str) -> Result<TxView> {
     let raw_tx = fetcher.fetch(hash).await
         .context("Failed to fetch transaction")?;
     

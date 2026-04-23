@@ -8,14 +8,13 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Widget},
     Frame, Terminal,
 };
 use std::time::Duration;
 
 use crate::app::{App, FetchState, InputMode, TreeNode};
 use tx_tree::{TxTreeWidget, TreeState};
-use detail::DetailWidget;
 
 pub async fn run(mut app: App) -> Result<()> {
     let mut stdout = std::io::stdout();
@@ -159,7 +158,7 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
         .split(area);
 
-    let title = Paragraph::new("🔍 cardano-tx-viz")
+    let title = Paragraph::new("cardano-tx-viz")
         .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
     f.render_widget(title, header_chunks[0]);
 
@@ -219,7 +218,7 @@ fn render_main_content(f: &mut Frame, app: &App, tree_state: &mut TreeState, are
             f.render_widget(loading, chunks[0]);
         }
         FetchState::Error(err) => {
-            let error_text = format!("❌ Error:\n{}", err);
+            let error_text = format!("Error:\n{}", err);
             let error = Paragraph::new(error_text)
                 .block(tree_block)
                 .style(Style::default().fg(Color::Red));

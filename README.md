@@ -116,10 +116,10 @@ OPTIONS:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  🔍 cardano-tx-viz  │  hash: f2754b2d...            │
+│   cardano-tx-viz  │  hash: f2754b2d...            │
 ├────────────────────────┬────────────────────────────┤
 │  TX TREE               │  DETAIL                    │
-│  ▼ Inputs (2)          │  📦 Datum                  │
+│  ▼ Inputs (2)          │   Datum                  │
 │    ▶ #0 addr1q...      │  Raw CBOR: d87980...      │
 │    ▶ #1 addr1q...      │                            │
 │  ▼ Outputs (3)         │  Decoded:                  │

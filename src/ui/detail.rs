@@ -5,7 +5,7 @@ use ratatui::{
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
-use crate::app::{App, TreeNode};
+use crate::app::TreeNode;
 use crate::decoder::{TxView, PlutusNode, AssetView};
 
 #[derive(Debug, Clone)]
@@ -44,7 +44,7 @@ pub fn render_detail_content(
     tx: Option<&TxView>,
     scroll: usize,
 ) {
-    let content_area = area.inner(&Margin::new(1, 1));
+    let content_area = area.inner(ratatui::layout::Margin::new(1, 1));
     
     let text = if let (Some(node), Some(tx)) = (node, tx) {
         render_node_detail(node, tx)
@@ -59,23 +59,12 @@ pub fn render_detail_content(
     paragraph.render(content_area, buf);
 }
 
-struct Margin {
-    vertical: u16,
-    horizontal: u16,
-}
-
-impl Margin {
-    fn new(vertical: u16, horizontal: u16) -> Self {
-        Self { vertical, horizontal }
-    }
-}
-
 fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
     match node {
         TreeNode::InputsHeader { count, expanded } => {
-            let mut lines = vec![
+            let lines = vec![
                 Line::from(Span::styled(
-                    format!("📥 Inputs ({})", count),
+                    format!(" Inputs ({})", count),
                     Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
@@ -90,7 +79,7 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
             if let Some(input) = tx.inputs.get(*index) {
                 let mut lines = vec![
                     Line::from(Span::styled(
-                        format!("📥 Input #{}", index),
+                        format!(" Input #{}", index),
                         Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
                     )),
                     Line::from(""),
@@ -118,7 +107,7 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
                 if let Some(datum) = &input.datum {
                     lines.push(Line::from(""));
                     lines.push(Line::from(Span::styled("Datum Hash:", Style::default().fg(Color::Gray))));
-                    lines.push(Line::from(&datum.raw_cbor));
+                    lines.push(Line::from(datum.raw_cbor.clone()));
                 }
                 
                 Text::from(lines)
@@ -140,9 +129,9 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
         }
         
         TreeNode::OutputsHeader { count, expanded } => {
-            let mut lines = vec![
+            let lines = vec![
                 Line::from(Span::styled(
-                    format!("📤 Outputs ({})", count),
+                    format!(" Outputs ({})", count),
                     Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
@@ -157,7 +146,7 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
             if let Some(output) = tx.outputs.get(*index) {
                 let mut lines = vec![
                     Line::from(Span::styled(
-                        format!("📤 Output #{}", index),
+                        format!(" Output #{}", index),
                         Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
                     )),
                     Line::from(""),
@@ -206,9 +195,9 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
         }
         
         TreeNode::RedeemersHeader { count, expanded } => {
-            let mut lines = vec![
+            let lines = vec![
                 Line::from(Span::styled(
-                    format!("🔑 Redeemers ({})", count),
+                    format!(" Redeemers ({})", count),
                     Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
@@ -223,7 +212,7 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
             if let Some(redeemer) = tx.redeemers.get(*index) {
                 let mut lines = vec![
                     Line::from(Span::styled(
-                        format!("🔑 {} Redeemer #{}", redeemer.tag, index),
+                        format!(" {} Redeemer #{}", redeemer.tag, index),
                         Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
                     )),
                     Line::from(""),
@@ -254,7 +243,7 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
         TreeNode::Metadata { expanded } => {
             let mut lines = vec![
                 Line::from(Span::styled(
-                    "📋 Metadata",
+                    " Metadata",
                     Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
@@ -282,7 +271,7 @@ fn render_node_detail(node: &TreeNode, tx: &TxView) -> Text<'static> {
 fn render_datum_detail(raw_cbor: &str, decoded: &PlutusNode) -> Text<'static> {
     let mut lines = vec![
         Line::from(Span::styled(
-            "📦 Datum",
+            " Datum",
             Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),

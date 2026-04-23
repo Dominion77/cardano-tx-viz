@@ -88,7 +88,6 @@ impl TxFetcher for KoiosFetcher {
     async fn fetch_datum(&self, datum_hash: &str) -> Result<Vec<u8>> {
         #[derive(Deserialize)]
         struct DatumInfoResponse {
-            hash: String,
             bytes: String,
         }
 

@@ -20,7 +20,7 @@ async fn test_fetch_known_mainnet_transaction() {
     
     match result {
         Ok(raw_tx) => {
-            println!("✓ Successfully fetched transaction");
+            println!("Successfully fetched transaction");
             assert_eq!(raw_tx.hash, tx_hash);
             assert!(!raw_tx.cbor.is_empty());
             
@@ -30,7 +30,7 @@ async fn test_fetch_known_mainnet_transaction() {
             
             match tx_view {
                 Ok(tx) => {
-                    println!("✓ Successfully parsed transaction");
+                    println!("Successfully parsed transaction");
                     println!("  Inputs: {}", tx.inputs.len());
                     println!("  Outputs: {}", tx.outputs.len());
                     println!("  Redeemers: {}", tx.redeemers.len());
@@ -99,7 +99,7 @@ async fn test_datum_decoding() {
         _ => panic!("Expected Constr node"),
     }
     
-    println!("✓ Datum decoded correctly");
+    println!("Datum decoded correctly");
 }
 
 #[tokio::test]
@@ -123,7 +123,7 @@ async fn test_multi_asset_transaction() {
     assert!(native.is_some(), "Should have native asset");
     
     if let Some(asset) = native {
-        println!("✓ Native asset found:");
+        println!("Native asset found:");
         println!("  Policy ID: {}", asset.policy_id);
         println!("  Asset Name: {}", asset.asset_name);
         println!("  Amount: {}", asset.amount);
@@ -141,7 +141,7 @@ async fn test_redeemer_parsing() {
     assert!(!tx_view.redeemers.is_empty(), "Should have redeemers");
     
     let redeemer = &tx_view.redeemers[0];
-    println!("✓ Redeemer parsed:");
+    println!("Redeemer parsed:");
     println!("  Tag: {}", redeemer.tag);
     println!("  Index: {}", redeemer.index);
     println!("  Ex Units: ({}, {})", redeemer.ex_units.0, redeemer.ex_units.1);
@@ -166,7 +166,7 @@ async fn test_metadata_parsing() {
     assert!(tx_view.metadata.is_some(), "Should have metadata");
     
     if let Some(metadata) = &tx_view.metadata {
-        println!("✓ Metadata parsed successfully");
+        println!("Metadata parsed successfully");
         
         // Verify it's valid JSON
         let json_str = serde_json::to_string(metadata).unwrap();
@@ -183,7 +183,7 @@ async fn test_error_handling() {
     assert!(result.is_err());
     assert_eq!(result.unwrap_err().to_string(), "Transaction not found");
     
-    println!("✓ Error handling works correctly");
+    println!("Error handling works correctly");
 }
 
 #[tokio::test]
@@ -221,7 +221,7 @@ async fn test_plutus_node_all_variants() {
         let compact = node.to_string_compact();
         assert!(!compact.is_empty());
         
-        println!("  ✓ {}: {}", name, compact);
+        println!("  {}: {}", name, compact);
     }
 }
 
@@ -241,7 +241,7 @@ async fn test_app_state_transitions() {
     app.start_fetch("a".repeat(64));
     assert!(matches!(app.fetch_state, cardano_tx_viz::app::FetchState::Loading));
     
-    println!("✓ App state transitions work correctly");
+    println!("App state transitions work correctly");
 }
 
 #[tokio::test]
@@ -266,7 +266,7 @@ async fn test_tree_node_generation() {
         .any(|n| matches!(n, cardano_tx_viz::app::TreeNode::OutputsHeader { .. }));
     assert!(has_outputs_header);
     
-    println!("✓ Tree generated with {} nodes", app.tree_state.visible_nodes.len());
+    println!("Tree generated with {} nodes", app.tree_state.visible_nodes.len());
 }
 
 #[tokio::test]
@@ -280,7 +280,7 @@ async fn test_clipboard_functions() {
         println!("Clipboard test skipped in CI");
     } else {
         match result {
-            Ok(_) => println!("✓ Clipboard copy successful"),
+            Ok(_) => println!("Clipboard copy successful"),
             Err(e) => println!("Clipboard not available: {}", e),
         }
     }

@@ -5,8 +5,8 @@ use super::{RawTx, TxFetcher};
 
 #[derive(Debug, Clone)]
 pub struct MockFetcher {
-    pub tx_responses: std::collections::HashMap<String, Result<RawTx>>,
-    pub datum_responses: std::collections::HashMap<String, Result<Vec<u8>>>,
+    pub tx_responses: std::collections::HashMap<String, Result<RawTx, String>>,
+    pub datum_responses: std::collections::HashMap<String, Result<Vec<u8>, String>>,
 }
 
 impl MockFetcher {
@@ -17,13 +17,13 @@ impl MockFetcher {
         }
     }
 
-    pub fn with_tx(mut self, hash: &str, response: Result<RawTx>) -> Self {
-        self.tx_responses.insert(hash.to_string(), response);
+    pub fn with_tx(mut self, hash: &str, response: Result<RawTx, anyhow::Error>) -> Self {
+        self.tx_responses.insert(hash.to_string(), response.map_err(|e| e.to_string()));
         self
     }
 
-    pub fn with_datum(mut self, hash: &str, response: Result<Vec<u8>>) -> Self {
-        self.datum_responses.insert(hash.to_string(), response);
+    pub fn with_datum(mut self, hash: &str, response: Result<Vec<u8>, anyhow::Error>) -> Self {
+        self.datum_responses.insert(hash.to_string(), response.map_err(|e| e.to_string()));
         self
     }
 }

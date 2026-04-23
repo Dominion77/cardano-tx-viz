@@ -18,14 +18,14 @@ async fn main() -> anyhow::Result<()> {
     
     match fetcher.fetch(tx_hash).await {
         Ok(raw_tx) => {
-            println!("✓ Transaction fetched successfully");
+            println!("Transaction fetched successfully");
             println!("  CBOR size: {} bytes", raw_tx.cbor.len());
             
             // Parse transaction
             let mut parser = cardano_tx_viz::decoder::TxParser::new();
             match parser.parse_transaction(&raw_tx.cbor) {
                 Ok(tx) => {
-                    println!("✓ Transaction parsed successfully");
+                    println!("Transaction parsed successfully");
                     println!("  Hash: {}", tx.hash);
                     println!("  Inputs: {}", tx.inputs.len());
                     println!("  Outputs: {}", tx.outputs.len());
@@ -42,12 +42,12 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 Err(e) => {
-                    println!("✗ Failed to parse transaction: {}", e);
+                    println!("Failed to parse transaction: {}", e);
                 }
             }
         }
         Err(e) => {
-            println!("✗ Failed to fetch transaction: {}", e);
+            println!("Failed to fetch transaction: {}", e);
             println!("  (This is expected if offline or network issues)");
         }
     }
