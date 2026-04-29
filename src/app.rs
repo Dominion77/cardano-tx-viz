@@ -591,7 +591,7 @@ impl App {
                                 crate::clipboard::copy_to_clipboard("ada")
                             }
                         } else {
-                            Ok(())
+                            Err(anyhow::anyhow!("Output not found"))
                         }
                     }
                     TreeNode::Input { index, .. } => {
@@ -602,20 +602,20 @@ impl App {
                                 crate::clipboard::copy_to_clipboard("ada")
                             }
                         } else {
-                            Ok(())
+                            Err(anyhow::anyhow!("Input not found"))
                         }
                     }
-                    _ => Ok(()),
+                    _ => Err(anyhow::anyhow!("Select an Input or Output to copy policy ID")),
                 }
             } else {
-                Ok(())
+                Err(anyhow::anyhow!("No node selected"))
             }
         } else {
-            Ok(())
+            Err(anyhow::anyhow!("No transaction loaded"))
         };
 
         if let Err(e) = result {
-            self.status_message = Some(format!("Failed to copy policy ID: {}", e));
+            self.status_message = Some(format!("Cannot copy policy ID: {}", e));
         } else {
             self.status_message = Some("Policy ID copied to clipboard".to_string());
         }
@@ -630,10 +630,10 @@ impl App {
                             if let Some(datum) = &output.datum {
                                 crate::clipboard::copy_raw_cbor(&datum.raw_cbor)
                             } else {
-                                Ok(())
+                                Err(anyhow::anyhow!("No datum on this output"))
                             }
                         } else {
-                            Ok(())
+                            Err(anyhow::anyhow!("Output not found"))
                         }
                     }
                     TreeNode::InputDatum { input_index } => {
@@ -641,10 +641,10 @@ impl App {
                             if let Some(datum) = &input.datum {
                                 crate::clipboard::copy_raw_cbor(&datum.raw_cbor)
                             } else {
-                                Ok(())
+                                Err(anyhow::anyhow!("No datum on this input"))
                             }
                         } else {
-                            Ok(())
+                            Err(anyhow::anyhow!("Input not found"))
                         }
                     }
                     TreeNode::Redeemer { index, .. } => {
@@ -652,22 +652,22 @@ impl App {
                             // For redeemers, copy the decoded data as pretty-printed
                             crate::clipboard::copy_plutus_data(&redeemer.data)
                         } else {
-                            Ok(())
+                            Err(anyhow::anyhow!("Redeemer not found"))
                         }
                     }
-                    _ => Ok(()),
+                    _ => Err(anyhow::anyhow!("Select a Datum or Redeemer to copy raw CBOR")),
                 }
             } else {
-                Ok(())
+                Err(anyhow::anyhow!("No node selected"))
             }
         } else {
-            Ok(())
+            Err(anyhow::anyhow!("No transaction loaded"))
         };
 
         if let Err(e) = result {
-            self.status_message = Some(format!("Failed to copy raw data: {}", e));
+            self.status_message = Some(format!("Cannot copy raw CBOR: {}", e));
         } else {
-            self.status_message = Some("Raw data copied to clipboard".to_string());
+            self.status_message = Some("Raw CBOR copied to clipboard".to_string());
         }
     }
 

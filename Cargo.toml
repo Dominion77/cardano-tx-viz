@@ -2,6 +2,7 @@
 name = "cardano-tx-viz"
 version = "0.1.0"
 edition = "2021"
+default-run = "cardano-tx-viz"
 
 [lib]
 name = "cardano_tx_viz"
@@ -10,6 +11,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "cardano-tx-viz"
 path = "src/main.rs"
+
+[[bin]]
+name = "test_fetch"
+path = "test_fetch.rs"
 
 [dependencies]
 # Terminal UI
