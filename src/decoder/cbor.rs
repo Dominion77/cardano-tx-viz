@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
 use pallas_codec::minicbor;
-use pallas_primitives::conway::{PlutusData, BigInt};
+use pallas_primitives::conway::{BigInt, PlutusData};
 
 use crate::decoder::types::PlutusNode;
 
 pub fn decode_plutus_data(cbor_bytes: &[u8]) -> Result<PlutusNode> {
-    let plutus_data: PlutusData = minicbor::decode(cbor_bytes)
-        .context("Failed to decode CBOR as PlutusData")?;
-    
+    let plutus_data: PlutusData =
+        minicbor::decode(cbor_bytes).context("Failed to decode CBOR as PlutusData")?;
+
     Ok(convert_plutus_data(plutus_data))
 }
 
@@ -24,12 +24,8 @@ pub fn try_decode_as_plutus_data(cbor_bytes: &[u8]) -> PlutusNode {
 fn convert_plutus_data(data: PlutusData) -> PlutusNode {
     match data {
         PlutusData::Constr(constr) => {
-            let fields = constr
-                .fields
-                .into_iter()
-                .map(convert_plutus_data)
-                .collect();
-            PlutusNode::Constr(constr.tag.into(), fields)
+            let fields = constr.fields.into_iter().map(convert_plutus_data).collect();
+            PlutusNode::Constr(constr.tag, fields)
         }
         PlutusData::Map(map) => {
             let entries = map
@@ -39,42 +35,34 @@ fn convert_plutus_data(data: PlutusData) -> PlutusNode {
                 .collect();
             PlutusNode::Map(entries)
         }
-        PlutusData::BigInt(big_int) => {
-            match big_int {
-                BigInt::Int(i) => PlutusNode::Int(i.into()),
-                BigInt::BigUInt(bytes) => {
-                    if bytes.len() <= 16 {
-                        let mut value: i128 = 0;
-                        for &byte in bytes.to_vec().iter() {
-                            value = (value << 8) | (byte as i128);
-                        }
-                        PlutusNode::Int(value)
-                    } else {
-                        PlutusNode::Bytes(hex::encode(bytes.as_ref() as &[u8]))
+        PlutusData::BigInt(big_int) => match big_int {
+            BigInt::Int(i) => PlutusNode::Int(i.into()),
+            BigInt::BigUInt(bytes) => {
+                if bytes.len() <= 16 {
+                    let mut value: i128 = 0;
+                    for &byte in bytes.to_vec().iter() {
+                        value = (value << 8) | (byte as i128);
                     }
-                }
-                BigInt::BigNInt(bytes) => {
-                    if bytes.len() <= 16 {
-                        let mut value: i128 = 0;
-                        for &byte in bytes.to_vec().iter() {
-                            value = (value << 8) | (byte as i128);
-                        }
-                        PlutusNode::Int(-value)
-                    } else {
-                        PlutusNode::Bytes(hex::encode(bytes.as_ref() as &[u8]))
-                    }
+                    PlutusNode::Int(value)
+                } else {
+                    PlutusNode::Bytes(hex::encode(bytes.as_ref() as &[u8]))
                 }
             }
-        }
-        PlutusData::BoundedBytes(bytes) => {
-            PlutusNode::Bytes(hex::encode(bytes.as_ref() as &[u8]))
-        }
+            BigInt::BigNInt(bytes) => {
+                if bytes.len() <= 16 {
+                    let mut value: i128 = 0;
+                    for &byte in bytes.to_vec().iter() {
+                        value = (value << 8) | (byte as i128);
+                    }
+                    PlutusNode::Int(-value)
+                } else {
+                    PlutusNode::Bytes(hex::encode(bytes.as_ref() as &[u8]))
+                }
+            }
+        },
+        PlutusData::BoundedBytes(bytes) => PlutusNode::Bytes(hex::encode(bytes.as_ref() as &[u8])),
         PlutusData::Array(array) => {
-            let items = array
-                .iter()
-                .cloned()
-                .map(convert_plutus_data)
-                .collect();
+            let items = array.iter().cloned().map(convert_plutus_data).collect();
             PlutusNode::List(items)
         }
     }
@@ -86,8 +74,7 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
 
 pub fn extract_raw_cbor(data: &PlutusData) -> Result<String> {
     let mut bytes = Vec::new();
-    minicbor::encode(data, &mut bytes)
-        .context("Failed to encode PlutusData to CBOR")?;
+    minicbor::encode(data, &mut bytes).context("Failed to encode PlutusData to CBOR")?;
     Ok(hex::encode(bytes))
 }
 
@@ -115,7 +102,7 @@ mod tests {
         };
         let data = PlutusData::Constr(constr);
         let node = convert_plutus_data(data);
-        
+
         match node {
             PlutusNode::Constr(tag, fields) => {
                 assert_eq!(tag, 121);
@@ -140,7 +127,7 @@ mod tests {
         ];
         let data = PlutusData::Array(array.into());
         let node = convert_plutus_data(data);
-        
+
         match node {
             PlutusNode::List(items) => {
                 assert_eq!(items.len(), 2);

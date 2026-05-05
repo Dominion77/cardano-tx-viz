@@ -9,7 +9,7 @@ pub fn copy_to_clipboard(text: &str) -> Result<()> {
             clipboard
                 .set_text(text.to_string())
                 .context("Failed to set clipboard text")?;
-            
+
             debug!("Copied to clipboard: {} chars", text.len());
             Ok(())
         }
@@ -20,7 +20,7 @@ pub fn copy_to_clipboard(text: &str) -> Result<()> {
                 warn!("arboard failed, trying xclip fallback: {}", e);
                 fallback_linux_clipboard(text)
             }
-            
+
             #[cfg(not(target_os = "linux"))]
             {
                 Err(e).context("Failed to initialize clipboard")
@@ -67,9 +67,14 @@ pub fn copy_asset_info(policy_id: &str, asset_name: &str, amount: u64) -> Result
         let ada = amount as f64 / 1_000_000.0;
         format!("₳ {:.6}", ada)
     } else {
-        format!("Policy ID: {}\nAsset Name: {}\nAmount: {}", 
-            policy_id, 
-            if asset_name.is_empty() { "(none)" } else { asset_name },
+        format!(
+            "Policy ID: {}\nAsset Name: {}\nAmount: {}",
+            policy_id,
+            if asset_name.is_empty() {
+                "(none)"
+            } else {
+                asset_name
+            },
             amount
         )
     };
@@ -79,18 +84,14 @@ pub fn copy_asset_info(policy_id: &str, asset_name: &str, amount: u64) -> Result
 /// Try to get clipboard text (for paste functionality)
 pub fn get_clipboard_text() -> Result<String> {
     match Clipboard::new() {
-        Ok(mut clipboard) => {
-            clipboard
-                .get_text()
-                .context("Failed to get clipboard text")
-        }
+        Ok(mut clipboard) => clipboard.get_text().context("Failed to get clipboard text"),
         Err(e) => {
             #[cfg(target_os = "linux")]
             {
                 warn!("arboard failed, trying xclip fallback for paste: {}", e);
                 fallback_linux_paste()
             }
-            
+
             #[cfg(not(target_os = "linux"))]
             {
                 Err(e).context("Failed to initialize clipboard for paste")
@@ -107,7 +108,9 @@ pub fn is_clipboard_available() -> bool {
 /// Clear clipboard (security feature for sensitive data)
 pub fn clear_clipboard() -> Result<()> {
     if let Ok(mut clipboard) = Clipboard::new() {
-        clipboard.set_text("").context("Failed to clear clipboard")?;
+        clipboard
+            .set_text("")
+            .context("Failed to clear clipboard")?;
         debug!("Clipboard cleared");
     }
     Ok(())
@@ -125,9 +128,9 @@ pub fn copy_truncated(text: &str, max_len: usize) -> Result<()> {
 
 #[cfg(target_os = "linux")]
 fn fallback_linux_clipboard(text: &str) -> Result<()> {
-    use std::process::Command;
     use std::io::Write;
-    
+    use std::process::Command;
+
     // Try xclip first
     let xclip_result = Command::new("xclip")
         .args(["-selection", "clipboard"])
@@ -139,12 +142,12 @@ fn fallback_linux_clipboard(text: &str) -> Result<()> {
             }
             child.wait()
         });
-    
+
     if xclip_result.is_ok() {
         debug!("Copied using xclip fallback");
         return Ok(());
     }
-    
+
     // Try xsel as second option
     let xsel_result = Command::new("xsel")
         .args(["--clipboard", "--input"])
@@ -156,42 +159,44 @@ fn fallback_linux_clipboard(text: &str) -> Result<()> {
             }
             child.wait()
         });
-    
+
     if xsel_result.is_ok() {
         debug!("Copied using xsel fallback");
         return Ok(());
     }
-    
-    Err(anyhow::anyhow!("No clipboard utility available. Install xclip or xsel."))
+
+    Err(anyhow::anyhow!(
+        "No clipboard utility available. Install xclip or xsel."
+    ))
 }
 
 #[cfg(target_os = "linux")]
 fn fallback_linux_paste() -> Result<String> {
     use std::process::Command;
-    
+
     // Try xclip first
     if let Ok(output) = Command::new("xclip")
         .args(["-selection", "clipboard", "-o"])
         .output()
     {
         if output.status.success() {
-            return String::from_utf8(output.stdout)
-                .context("Invalid UTF-8 in clipboard");
+            return String::from_utf8(output.stdout).context("Invalid UTF-8 in clipboard");
         }
     }
-    
+
     // Try xsel as second option
     if let Ok(output) = Command::new("xsel")
         .args(["--clipboard", "--output"])
         .output()
     {
         if output.status.success() {
-            return String::from_utf8(output.stdout)
-                .context("Invalid UTF-8 in clipboard");
+            return String::from_utf8(output.stdout).context("Invalid UTF-8 in clipboard");
         }
     }
-    
-    Err(anyhow::anyhow!("No clipboard utility available. Install xclip or xsel."))
+
+    Err(anyhow::anyhow!(
+        "No clipboard utility available. Install xclip or xsel."
+    ))
 }
 
 #[cfg(test)]
@@ -210,7 +215,7 @@ mod tests {
         if std::env::var("CI").is_ok() {
             return;
         }
-        
+
         // These might fail on headless systems, so I ignore errors
         let _ = copy_with_prefix("test", "value");
         let _ = copy_policy_id("test_policy");

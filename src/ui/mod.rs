@@ -1,5 +1,5 @@
-pub mod tx_tree;
 pub mod detail;
+pub mod tx_tree;
 
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
@@ -14,7 +14,7 @@ use ratatui::{
 use std::time::Duration;
 
 use crate::app::{App, FetchState, InputMode, TreeNode};
-use tx_tree::{TxTreeWidget, TreeState};
+use tx_tree::{TreeState, TxTreeWidget};
 
 pub async fn run(mut app: App) -> Result<()> {
     let mut stdout = std::io::stdout();
@@ -44,10 +44,10 @@ pub async fn run(mut app: App) -> Result<()> {
 async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
     let tick_rate = Duration::from_millis(100);
     let mut tree_state = TreeState::new();
-    
+
     loop {
         terminal.draw(|f| render(f, app, &mut tree_state))?;
-        
+
         while let Some(event) = app.poll_event() {
             app.handle_event(event);
             if let FetchState::Done(_) = &app.fetch_state {
@@ -60,7 +60,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                 };
             }
         }
-        
+
         if event::poll(tick_rate)? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
@@ -69,7 +69,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                             if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
                                 break;
                             }
-                            
+
                             // Handle tree navigation keys directly, pass others to app
                             match key.code {
                                 KeyCode::Up => {
@@ -81,32 +81,40 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                     app.tree_state.selected_index = tree_state.selected_index;
                                 }
                                 KeyCode::Right | KeyCode::Char(' ') => {
-                                    if let Some(node) = tree_state.visible_nodes.get(tree_state.selected_index) {
-                                        if matches!(node, 
-                                            TreeNode::InputsHeader { .. } | 
-                                            TreeNode::OutputsHeader { .. } | 
-                                            TreeNode::RedeemersHeader { .. } | 
-                                            TreeNode::Metadata { .. }
+                                    if let Some(node) =
+                                        tree_state.visible_nodes.get(tree_state.selected_index)
+                                    {
+                                        if matches!(
+                                            node,
+                                            TreeNode::InputsHeader { .. }
+                                                | TreeNode::OutputsHeader { .. }
+                                                | TreeNode::RedeemersHeader { .. }
+                                                | TreeNode::Metadata { .. }
                                         ) {
                                             let all_nodes = app.tree_state.visible_nodes.clone();
                                             tree_state.toggle_expand(&all_nodes);
                                             app.tree_state.expanded = tree_state.expanded.clone();
-                                            app.tree_state.visible_nodes = tree_state.visible_nodes.clone();
+                                            app.tree_state.visible_nodes =
+                                                tree_state.visible_nodes.clone();
                                         }
                                     }
                                 }
                                 KeyCode::Left => {
-                                    if let Some(node) = tree_state.visible_nodes.get(tree_state.selected_index) {
-                                        if matches!(node,
-                                            TreeNode::InputsHeader { .. } |
-                                            TreeNode::OutputsHeader { .. } |
-                                            TreeNode::RedeemersHeader { .. } |
-                                            TreeNode::Metadata { .. }
+                                    if let Some(node) =
+                                        tree_state.visible_nodes.get(tree_state.selected_index)
+                                    {
+                                        if matches!(
+                                            node,
+                                            TreeNode::InputsHeader { .. }
+                                                | TreeNode::OutputsHeader { .. }
+                                                | TreeNode::RedeemersHeader { .. }
+                                                | TreeNode::Metadata { .. }
                                         ) {
                                             let all_nodes = app.tree_state.visible_nodes.clone();
                                             tree_state.toggle_expand(&all_nodes);
                                             app.tree_state.expanded = tree_state.expanded.clone();
-                                            app.tree_state.visible_nodes = tree_state.visible_nodes.clone();
+                                            app.tree_state.visible_nodes =
+                                                tree_state.visible_nodes.clone();
                                         }
                                     }
                                 }
@@ -115,7 +123,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                     app.handle_key(key);
                                 }
                             }
-                            
+
                             // Update scroll based on visible area
                             if let Some(height) = terminal.size().ok().map(|s| s.height as usize) {
                                 tree_state.update_scroll(height.saturating_sub(6));
@@ -133,10 +141,10 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                 }
             }
         }
-        
+
         app.tick();
     }
-    
+
     Ok(())
 }
 
@@ -162,8 +170,11 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
         .split(area);
 
-    let title = Paragraph::new("cardano-tx-viz")
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
+    let title = Paragraph::new("cardano-tx-viz").style(
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    );
     f.render_widget(title, header_chunks[0]);
 
     let input_chunks = Layout::default()
@@ -171,8 +182,7 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         .constraints([Constraint::Length(5), Constraint::Min(0)])
         .split(header_chunks[1]);
 
-    let hash_label = Paragraph::new("hash:")
-        .style(Style::default().fg(Color::Gray));
+    let hash_label = Paragraph::new("hash:").style(Style::default().fg(Color::Gray));
     f.render_widget(hash_label, input_chunks[0]);
 
     let hash_style = match app.input_mode {
@@ -194,9 +204,11 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         hash
     };
 
-    let hash_input = Paragraph::new(display_hash)
-        .style(hash_style)
-        .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::DarkGray)));
+    let hash_input = Paragraph::new(display_hash).style(hash_style).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::DarkGray)),
+    );
     f.render_widget(hash_input, input_chunks[1]);
 }
 
@@ -250,7 +262,7 @@ fn render_main_content(f: &mut Frame, app: &App, tree_state: &mut TreeState, are
         let node = tree_state.visible_nodes.get(tree_state.selected_index);
         let detail_area = detail_block.inner(chunks[1]);
         detail_block.render(chunks[1], f.buffer_mut());
-        
+
         detail::render_detail_content(
             detail_area,
             f.buffer_mut(),
@@ -259,49 +271,92 @@ fn render_main_content(f: &mut Frame, app: &App, tree_state: &mut TreeState, are
             app.detail_scroll,
         );
     } else {
-        let empty = Paragraph::new("")
-            .block(detail_block);
+        let empty = Paragraph::new("").block(detail_block);
         f.render_widget(empty, chunks[1]);
     }
 }
 
 fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
     let status_text = if let Some(msg) = &app.status_message {
-        Line::from(Span::styled(msg.clone(), Style::default().fg(Color::Yellow)))
+        Line::from(Span::styled(
+            msg.clone(),
+            Style::default().fg(Color::Yellow),
+        ))
     } else {
         match app.input_mode {
-            InputMode::Editing => {
-                Line::from(vec![
-                    Span::styled("[Enter]", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                    Span::raw(" confirm  "),
-                    Span::styled("[Esc]", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-                    Span::raw(" cancel  "),
-                    Span::styled("[Ctrl+V]", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                    Span::raw(" paste"),
-                ])
-            }
-            InputMode::Normal => {
-                Line::from(vec![
-                    Span::styled("[/]", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                    Span::raw(" search  "),
-                    Span::styled("[↑/↓]", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                    Span::raw(" navigate  "),
-                    Span::styled("[→/←]", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-                    Span::raw(" expand/collapse  "),
-                    Span::styled("[c]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                    Span::raw(" copy  "),
-                    Span::styled("[p]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                    Span::raw(" policy  "),
-                    Span::styled("[r]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                    Span::raw(" raw  "),
-                    Span::styled("[q]", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-                    Span::raw(" quit"),
-                ])
-            }
+            InputMode::Editing => Line::from(vec![
+                Span::styled(
+                    "[Enter]",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" confirm  "),
+                Span::styled(
+                    "[Esc]",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" cancel  "),
+                Span::styled(
+                    "[Ctrl+V]",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" paste"),
+            ]),
+            InputMode::Normal => Line::from(vec![
+                Span::styled(
+                    "[/]",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" search  "),
+                Span::styled(
+                    "[↑/↓]",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" navigate  "),
+                Span::styled(
+                    "[→/←]",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" expand/collapse  "),
+                Span::styled(
+                    "[c]",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" copy  "),
+                Span::styled(
+                    "[p]",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" policy  "),
+                Span::styled(
+                    "[r]",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" raw  "),
+                Span::styled(
+                    "[q]",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" quit"),
+            ]),
         }
     };
 
-    let status = Paragraph::new(status_text)
-        .style(Style::default().fg(Color::DarkGray));
+    let status = Paragraph::new(status_text).style(Style::default().fg(Color::DarkGray));
     f.render_widget(status, area);
 }

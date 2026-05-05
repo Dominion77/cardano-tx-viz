@@ -79,7 +79,7 @@ impl PlutusNode {
             PlutusNode::Constr(tag, fields) => {
                 let mut result = format!("{}Constr {} [", indent_str, tag);
                 if fields.is_empty() {
-                    result.push_str("]");
+                    result.push(']');
                 } else {
                     result.push('\n');
                     for (i, field) in fields.iter().enumerate() {
@@ -95,7 +95,7 @@ impl PlutusNode {
             PlutusNode::Map(entries) => {
                 let mut result = format!("{}Map {{", indent_str);
                 if entries.is_empty() {
-                    result.push_str("}");
+                    result.push('}');
                 } else {
                     result.push('\n');
                     for (i, (k, v)) in entries.iter().enumerate() {
@@ -116,7 +116,7 @@ impl PlutusNode {
             PlutusNode::List(items) => {
                 let mut result = format!("{}List [", indent_str);
                 if items.is_empty() {
-                    result.push_str("]");
+                    result.push(']');
                 } else {
                     result.push('\n');
                     for (i, item) in items.iter().enumerate() {
@@ -141,7 +141,8 @@ impl PlutusNode {
                 if fields.is_empty() {
                     format!("Constr {} []", tag)
                 } else {
-                    let fields_str: Vec<String> = fields.iter().map(|f| f.to_string_compact()).collect();
+                    let fields_str: Vec<String> =
+                        fields.iter().map(|f| f.to_string_compact()).collect();
                     format!("Constr {} [{}]", tag, fields_str.join(", "))
                 }
             }
@@ -151,7 +152,9 @@ impl PlutusNode {
                 } else {
                     let entries_str: Vec<String> = entries
                         .iter()
-                        .map(|(k, v)| format!("{}: {}", k.to_string_compact(), v.to_string_compact()))
+                        .map(|(k, v)| {
+                            format!("{}: {}", k.to_string_compact(), v.to_string_compact())
+                        })
                         .collect();
                     format!("Map {{ {} }}", entries_str.join(", "))
                 }
@@ -160,7 +163,8 @@ impl PlutusNode {
                 if items.is_empty() {
                     "List []".to_string()
                 } else {
-                    let items_str: Vec<String> = items.iter().map(|i| i.to_string_compact()).collect();
+                    let items_str: Vec<String> =
+                        items.iter().map(|i| i.to_string_compact()).collect();
                     format!("List [{}]", items_str.join(", "))
                 }
             }

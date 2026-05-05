@@ -3,6 +3,14 @@ name = "cardano-tx-viz"
 version = "0.1.0"
 edition = "2021"
 default-run = "cardano-tx-viz"
+description = "Terminal-based UI for visualizing and debugging Cardano transactions with Plutus V3 datum/redeemer support"
+license = "MIT"
+repository = "https://github.com/Dominion77/cardano-tx-viz"
+homepage = "https://github.com/Dominion77/cardano-tx-viz"
+documentation = "https://docs.rs/cardano-tx-viz"
+keywords = ["cardano", "blockchain", "plutus", "tui", "visualization"]
+categories = ["command-line-utilities", "visualization", "development-tools"]
+readme = "README.md"
 
 [lib]
 name = "cardano_tx_viz"

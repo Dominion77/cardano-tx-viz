@@ -26,31 +26,35 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    
+
     // Initialize logging
-    let log_level = if args.debug { Level::DEBUG } else { Level::INFO };
+    let log_level = if args.debug {
+        Level::DEBUG
+    } else {
+        Level::INFO
+    };
     let subscriber = FmtSubscriber::builder()
         .with_max_level(log_level)
         .with_target(false)
         .compact()
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
-    
+
     // Load configuration
     let config = Config::load()?;
     let network = args.network.parse::<Network>()?;
     let fetcher_config = config.get_fetcher_config(network.clone());
-    
+
     // Create app
     let mut app = App::new(network, fetcher_config);
-    
+
     // If hash provided, fetch immediately
     if let Some(hash) = args.hash {
         app.start_fetch(hash);
     }
-    
+
     // Start TUI
     cardano_tx_viz::ui::run(app).await?;
-    
+
     Ok(())
 }

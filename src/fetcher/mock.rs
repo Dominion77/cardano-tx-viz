@@ -18,12 +18,14 @@ impl MockFetcher {
     }
 
     pub fn with_tx(mut self, hash: &str, response: Result<RawTx, anyhow::Error>) -> Self {
-        self.tx_responses.insert(hash.to_string(), response.map_err(|e| e.to_string()));
+        self.tx_responses
+            .insert(hash.to_string(), response.map_err(|e| e.to_string()));
         self
     }
 
     pub fn with_datum(mut self, hash: &str, response: Result<Vec<u8>, anyhow::Error>) -> Self {
-        self.datum_responses.insert(hash.to_string(), response.map_err(|e| e.to_string()));
+        self.datum_responses
+            .insert(hash.to_string(), response.map_err(|e| e.to_string()));
         self
     }
 }

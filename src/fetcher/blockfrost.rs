@@ -37,11 +37,11 @@ impl BlockfrostFetcher {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            
+
             if status.as_u16() == 404 {
                 return Err(anyhow!("Transaction not found"));
             }
-            
+
             return Err(anyhow!(
                 "Blockfrost API error ({}): {}",
                 status.as_u16(),
@@ -66,9 +66,9 @@ impl TxFetcher for BlockfrostFetcher {
 
         let endpoint = format!("/txs/{}/cbor", hash);
         let response: TxResponse = self.get(&endpoint).await?;
-        
-        let cbor = hex::decode(&response.cbor)
-            .context("Failed to decode CBOR hex from Blockfrost")?;
+
+        let cbor =
+            hex::decode(&response.cbor).context("Failed to decode CBOR hex from Blockfrost")?;
 
         Ok(RawTx {
             hash: hash.to_string(),
@@ -84,9 +84,8 @@ impl TxFetcher for BlockfrostFetcher {
 
         let endpoint = format!("/scripts/datum/{}/cbor", datum_hash);
         let response: DatumResponse = self.get(&endpoint).await?;
-        
-        hex::decode(&response.cbor)
-            .context("Failed to decode datum CBOR hex from Blockfrost")
+
+        hex::decode(&response.cbor).context("Failed to decode datum CBOR hex from Blockfrost")
     }
 }
 
@@ -102,7 +101,7 @@ mod tests {
             api_key: "test_key".to_string(),
             network: Network::Mainnet,
         };
-        
+
         // Verify the fetcher has the correct configuration
         assert_eq!(fetcher.api_key, "test_key");
         assert_eq!(fetcher.network, Network::Mainnet);
@@ -116,7 +115,7 @@ mod tests {
             api_key: "test_key".to_string(),
             network: Network::Mainnet,
         };
-        
+
         // Test with invalid hash should return error (but we won't actually call the API)
         let invalid_hash = "invalid_hash_format";
         assert!(!invalid_hash.is_empty());

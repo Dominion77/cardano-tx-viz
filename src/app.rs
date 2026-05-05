@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use crossterm::event::KeyCode;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
-use std::time::{Duration, Instant};
 
 use crate::decoder::{TxParser, TxView};
 use crate::fetcher::{FetcherConfig, Network, TxFetcher};
@@ -38,15 +38,40 @@ pub struct TreeState {
 
 #[derive(Debug, Clone)]
 pub enum TreeNode {
-    InputsHeader { expanded: bool, count: usize },
-    Input { index: usize, tx_hash: String, address: String },
-    InputDatum { input_index: usize },
-    OutputsHeader { expanded: bool, count: usize },
-    Output { index: usize, address: String },
-    OutputDatum { output_index: usize },
-    RedeemersHeader { expanded: bool, count: usize },
-    Redeemer { index: usize, tag: String },
-    Metadata { expanded: bool },
+    InputsHeader {
+        expanded: bool,
+        count: usize,
+    },
+    Input {
+        index: usize,
+        tx_hash: String,
+        address: String,
+    },
+    InputDatum {
+        input_index: usize,
+    },
+    OutputsHeader {
+        expanded: bool,
+        count: usize,
+    },
+    Output {
+        index: usize,
+        address: String,
+    },
+    OutputDatum {
+        output_index: usize,
+    },
+    RedeemersHeader {
+        expanded: bool,
+        count: usize,
+    },
+    Redeemer {
+        index: usize,
+        tag: String,
+    },
+    Metadata {
+        expanded: bool,
+    },
 }
 
 impl TreeNode {
@@ -66,7 +91,7 @@ impl TreeNode {
             }
             TreeNode::Output { index, address } => {
                 let addr_preview = if address.len() > 20 {
-                    format!("{}...{}", &address[..10], &address[address.len()-10..])
+                    format!("{}...{}", &address[..10], &address[address.len() - 10..])
                 } else {
                     address.clone()
                 };
@@ -76,7 +101,11 @@ impl TreeNode {
                 format!("    Datum for Output #{}", output_index)
             }
             TreeNode::RedeemersHeader { expanded, count } => {
-                format!("{} Redeemers ({})", if *expanded { "▼" } else { "▶" }, count)
+                format!(
+                    "{} Redeemers ({})",
+                    if *expanded { "▼" } else { "▶" },
+                    count
+                )
             }
             TreeNode::Redeemer { index, tag } => {
                 format!("  {} Redeemer #{}", tag, index)
@@ -123,12 +152,13 @@ pub struct App {
 impl App {
     pub fn new(network: Network, fetcher_config: FetcherConfig) -> Self {
         let (event_tx, event_rx) = mpsc::unbounded_channel();
-        
+
         let fetcher_name = match &fetcher_config {
             FetcherConfig::Blockfrost { .. } => "Blockfrost",
             FetcherConfig::Koios { .. } => "Koios",
-        }.to_string();
-        
+        }
+        .to_string();
+
         Self {
             fetch_state: FetchState::Idle,
             input_hash: String::new(),
@@ -157,20 +187,20 @@ impl App {
             self.status_message = Some("Transaction hash cannot be empty".to_string());
             return;
         }
-        
+
         self.fetch_state = FetchState::Loading;
         self.input_hash = hash.clone();
         self.status_message = Some(format!("Fetching transaction {}...", &hash));
-        
+
         let fetcher = self.fetcher.clone();
         let event_tx = self.event_tx.clone();
         let hash_for_closure = hash.clone();
-        
+
         tokio::spawn(async move {
             let result = fetch_transaction(fetcher, &hash_for_closure).await;
             let _ = event_tx.send(AppEvent::FetchComplete(result));
         });
-        
+
         info!("Started fetch for transaction: {}", hash);
     }
 
@@ -182,7 +212,8 @@ impl App {
                         info!("Successfully fetched transaction: {}", tx_view.hash);
                         self.build_tree_from_tx(&tx_view);
                         self.fetch_state = FetchState::Done(tx_view);
-                        self.status_message = Some(format!("Transaction {} loaded", self.input_hash));
+                        self.status_message =
+                            Some(format!("Transaction {} loaded", self.input_hash));
                         self.input_mode = InputMode::Normal;
                     }
                     Err(e) => {
@@ -204,7 +235,7 @@ impl App {
             }
             AppEvent::Error(msg) => {
                 error!("App error: {}", msg);
-                self.status_message = Some(format!("{}", msg));
+                self.status_message = Some(msg.to_string());
             }
             AppEvent::Tick => {
                 self.spinner_frame = (self.spinner_frame + 1) % 10;
@@ -216,73 +247,73 @@ impl App {
     pub fn build_tree_from_tx(&mut self, tx: &TxView) {
         let mut nodes = Vec::new();
         let mut expanded = Vec::new();
-        
+
         // Inputs header
-        nodes.push(TreeNode::InputsHeader { 
-            expanded: true, 
-            count: tx.inputs.len() 
+        nodes.push(TreeNode::InputsHeader {
+            expanded: true,
+            count: tx.inputs.len(),
         });
         expanded.push(true);
-        
+
         // Inputs
         for (idx, input) in tx.inputs.iter().enumerate() {
-            nodes.push(TreeNode::Input { 
-                index: idx, 
-                tx_hash: input.tx_hash.clone(), 
-                address: input.address.clone() 
+            nodes.push(TreeNode::Input {
+                index: idx,
+                tx_hash: input.tx_hash.clone(),
+                address: input.address.clone(),
             });
             expanded.push(false);
-            
+
             if input.datum.is_some() {
                 nodes.push(TreeNode::InputDatum { input_index: idx });
                 expanded.push(false);
             }
         }
-        
+
         // Outputs header
-        nodes.push(TreeNode::OutputsHeader { 
-            expanded: true, 
-            count: tx.outputs.len() 
+        nodes.push(TreeNode::OutputsHeader {
+            expanded: true,
+            count: tx.outputs.len(),
         });
         expanded.push(true);
-        
+
         // Outputs
         for (idx, output) in tx.outputs.iter().enumerate() {
-            nodes.push(TreeNode::Output { 
-                index: idx, 
-                address: output.address.clone() 
+            nodes.push(TreeNode::Output {
+                index: idx,
+                address: output.address.clone(),
             });
             expanded.push(false);
-            
+
             if output.datum.is_some() {
                 nodes.push(TreeNode::OutputDatum { output_index: idx });
                 expanded.push(false);
             }
         }
-        
+
         // Redeemers header
         if !tx.redeemers.is_empty() {
-            nodes.push(TreeNode::RedeemersHeader { 
-                expanded: true, 
-                count: tx.redeemers.len() 
+            nodes.push(TreeNode::RedeemersHeader {
+                expanded: true,
+                count: tx.redeemers.len(),
             });
             expanded.push(true);
-            
+
             for (idx, redeemer) in tx.redeemers.iter().enumerate() {
-                nodes.push(TreeNode::Redeemer { 
-                    index: idx, 
-                    tag: redeemer.tag.clone() 
+                nodes.push(TreeNode::Redeemer {
+                    index: idx,
+                    tag: redeemer.tag.clone(),
                 });
                 expanded.push(false);
             }
         }
-        
+
         // Metadata
         if tx.metadata.is_some() {
             nodes.push(TreeNode::Metadata { expanded: false });
             expanded.push(false);
         }
-        
+
         self.tree_state.visible_nodes = nodes;
         self.tree_state.expanded = expanded;
         self.tree_state.selected_index = 0;
@@ -333,17 +364,21 @@ impl App {
                 }
             }
             KeyCode::Right | KeyCode::Char(' ') => {
-                if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
-                    let should_expand = match node {
-                        TreeNode::InputsHeader { .. } => true,
-                        TreeNode::OutputsHeader { .. } => true,
-                        TreeNode::RedeemersHeader { .. } => true,
-                        TreeNode::Metadata { .. } => true,
-                        _ => false,
-                    };
-                    
+                if let Some(node) = self
+                    .tree_state
+                    .visible_nodes
+                    .get(self.tree_state.selected_index)
+                {
+                    let should_expand = matches!(
+                        node,
+                        TreeNode::InputsHeader { .. }
+                            | TreeNode::OutputsHeader { .. }
+                            | TreeNode::RedeemersHeader { .. }
+                            | TreeNode::Metadata { .. }
+                    );
+
                     if should_expand {
-                        self.tree_state.expanded[self.tree_state.selected_index] = 
+                        self.tree_state.expanded[self.tree_state.selected_index] =
                             !self.tree_state.expanded[self.tree_state.selected_index];
                         // Update node's expanded state
                         match &mut self.tree_state.visible_nodes[self.tree_state.selected_index] {
@@ -357,15 +392,19 @@ impl App {
                 }
             }
             KeyCode::Left => {
-                if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
-                    let should_collapse = match node {
-                        TreeNode::InputsHeader { expanded: true, .. } => true,
-                        TreeNode::OutputsHeader { expanded: true, .. } => true,
-                        TreeNode::RedeemersHeader { expanded: true, .. } => true,
-                        TreeNode::Metadata { expanded: true } => true,
-                        _ => false,
-                    };
-                    
+                if let Some(node) = self
+                    .tree_state
+                    .visible_nodes
+                    .get(self.tree_state.selected_index)
+                {
+                    let should_collapse = matches!(
+                        node,
+                        TreeNode::InputsHeader { expanded: true, .. }
+                            | TreeNode::OutputsHeader { expanded: true, .. }
+                            | TreeNode::RedeemersHeader { expanded: true, .. }
+                            | TreeNode::Metadata { expanded: true }
+                    );
+
                     if should_collapse {
                         self.tree_state.expanded[self.tree_state.selected_index] = false;
                         match &mut self.tree_state.visible_nodes[self.tree_state.selected_index] {
@@ -429,7 +468,7 @@ impl App {
 
     fn handle_editing_key(&mut self, key: crossterm::event::KeyEvent) {
         use crossterm::event::{KeyCode, KeyModifiers};
-        
+
         match key.code {
             KeyCode::Enter => {
                 self.input_mode = InputMode::Normal;
@@ -450,11 +489,12 @@ impl App {
                             .filter(|c| c.is_ascii_hexdigit())
                             .take(64 - self.input_hash.len())
                             .collect();
-                        
+
                         if !hex_only.is_empty() {
                             self.input_hash.push_str(&hex_only);
                             self.cursor_position = self.input_hash.len();
-                            self.status_message = Some(format!("Pasted {} characters", hex_only.len()));
+                            self.status_message =
+                                Some(format!("Pasted {} characters", hex_only.len()));
                         }
                     }
                     Err(_) => {
@@ -500,7 +540,11 @@ impl App {
     }
 
     fn copy_selected_to_clipboard(&mut self) {
-        let result = if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
+        let result = if let Some(node) = self
+            .tree_state
+            .visible_nodes
+            .get(self.tree_state.selected_index)
+        {
             match node {
                 TreeNode::Input { index, .. } => {
                     if let Some(tx) = self.get_current_tx() {
@@ -522,9 +566,11 @@ impl App {
                         if let Some(output) = tx.outputs.get(*index) {
                             let content = format!(
                                 "Output #{}\nAddress: {}\nValue: {}",
-                                index, 
+                                index,
                                 output.address,
-                                output.value.iter()
+                                output
+                                    .value
+                                    .iter()
                                     .map(|a| format!("{} {}", a.amount, a.asset_name))
                                     .collect::<Vec<_>>()
                                     .join(", ")
@@ -608,15 +654,22 @@ impl App {
 
     fn copy_policy_id_to_clipboard(&mut self) {
         let result = if let FetchState::Done(tx) = &self.fetch_state {
-            if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
+            if let Some(node) = self
+                .tree_state
+                .visible_nodes
+                .get(self.tree_state.selected_index)
+            {
                 match node {
                     TreeNode::Output { index, .. } => {
                         if let Some(output) = tx.outputs.get(*index) {
-                            if let Some(asset) = output.value.iter().find(|a| a.policy_id != "ada") {
+                            if let Some(asset) = output.value.iter().find(|a| a.policy_id != "ada")
+                            {
                                 crate::clipboard::copy_policy_id(&asset.policy_id)
                             } else {
                                 // No native tokens, only ADA
-                                Err(anyhow::anyhow!("This output only contains ADA (no native tokens/policy IDs)"))
+                                Err(anyhow::anyhow!(
+                                    "This output only contains ADA (no native tokens/policy IDs)"
+                                ))
                             }
                         } else {
                             Err(anyhow::anyhow!("Output not found"))
@@ -627,13 +680,17 @@ impl App {
                             if let Some(asset) = input.value.iter().find(|a| a.policy_id != "ada") {
                                 crate::clipboard::copy_policy_id(&asset.policy_id)
                             } else {
-                                Err(anyhow::anyhow!("This input only contains ADA (no native tokens/policy IDs)"))
+                                Err(anyhow::anyhow!(
+                                    "This input only contains ADA (no native tokens/policy IDs)"
+                                ))
                             }
                         } else {
                             Err(anyhow::anyhow!("Input not found"))
                         }
                     }
-                    _ => Err(anyhow::anyhow!("Select an Input or Output with native tokens to copy policy ID")),
+                    _ => Err(anyhow::anyhow!(
+                        "Select an Input or Output with native tokens to copy policy ID"
+                    )),
                 }
             } else {
                 Err(anyhow::anyhow!("No node selected"))
@@ -651,7 +708,11 @@ impl App {
 
     fn copy_raw_hex_to_clipboard(&mut self) {
         let result = if let FetchState::Done(tx) = &self.fetch_state {
-            if let Some(node) = self.tree_state.visible_nodes.get(self.tree_state.selected_index) {
+            if let Some(node) = self
+                .tree_state
+                .visible_nodes
+                .get(self.tree_state.selected_index)
+            {
                 match node {
                     TreeNode::OutputDatum { output_index } => {
                         if let Some(output) = tx.outputs.get(*output_index) {
@@ -684,7 +745,9 @@ impl App {
                             Err(anyhow::anyhow!("Redeemer not found"))
                         }
                     }
-                    _ => Err(anyhow::anyhow!("Navigate to a Datum or Redeemer node to copy raw CBOR")),
+                    _ => Err(anyhow::anyhow!(
+                        "Navigate to a Datum or Redeemer node to copy raw CBOR"
+                    )),
                 }
             } else {
                 Err(anyhow::anyhow!("No node selected"))
@@ -714,13 +777,16 @@ impl App {
 }
 
 async fn fetch_transaction(fetcher: std::sync::Arc<dyn TxFetcher>, hash: &str) -> Result<TxView> {
-    let raw_tx = fetcher.fetch(hash).await
+    let raw_tx = fetcher
+        .fetch(hash)
+        .await
         .context("Failed to fetch transaction")?;
-    
+
     let mut parser = TxParser::new();
-    let tx_view = parser.parse_transaction(&raw_tx.cbor)
+    let tx_view = parser
+        .parse_transaction(&raw_tx.cbor)
         .context("Failed to parse transaction")?;
-    
+
     Ok(tx_view)
 }
 
@@ -728,7 +794,9 @@ impl Default for App {
     fn default() -> Self {
         Self::new(
             Network::Mainnet,
-            FetcherConfig::Koios { network: Network::Mainnet }
+            FetcherConfig::Koios {
+                network: Network::Mainnet,
+            },
         )
     }
 }

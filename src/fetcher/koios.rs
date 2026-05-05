@@ -20,7 +20,11 @@ impl KoiosFetcher {
         }
     }
 
-    async fn post<T: for<'de> Deserialize<'de>>(&self, endpoint: &str, body: serde_json::Value) -> Result<T> {
+    async fn post<T: for<'de> Deserialize<'de>>(
+        &self,
+        endpoint: &str,
+        body: serde_json::Value,
+    ) -> Result<T> {
         let url = format!("{}{}", self.network.koios_base_url(), endpoint);
         let response = self
             .client
@@ -37,11 +41,14 @@ impl KoiosFetcher {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            
+
             if status.as_u16() == 404 {
-                return Err(anyhow!("Transaction not found on {} network", self.network.to_string()));
+                return Err(anyhow!(
+                    "Transaction not found on {} network",
+                    self.network.to_string()
+                ));
             }
-            
+
             return Err(anyhow!(
                 "Koios API returned error {} for {}: {}",
                 status.as_u16(),
@@ -54,7 +61,7 @@ impl KoiosFetcher {
             .json()
             .await
             .context("Failed to parse Koios API response (invalid JSON)")?;
-        
+
         koios_response
             .into_iter()
             .next()
@@ -75,12 +82,13 @@ impl TxFetcher for KoiosFetcher {
             "_tx_hashes": [hash]
         });
 
-        let response: TxCborResponse = self.post("/tx_cbor", body)
+        let response: TxCborResponse = self
+            .post("/tx_cbor", body)
             .await
             .context(format!("Failed to fetch transaction {} from Koios", hash))?;
-        
-        let cbor = hex::decode(&response.cbor)
-            .context("Failed to decode CBOR hex from Koios response")?;
+
+        let cbor =
+            hex::decode(&response.cbor).context("Failed to decode CBOR hex from Koios response")?;
 
         Ok(RawTx {
             hash: response.tx_hash,
@@ -99,9 +107,8 @@ impl TxFetcher for KoiosFetcher {
         });
 
         let response: DatumInfoResponse = self.post("/datum_info", body).await?;
-        
-        hex::decode(&response.bytes)
-            .context("Failed to decode datum bytes from Koios")
+
+        hex::decode(&response.bytes).context("Failed to decode datum bytes from Koios")
     }
 }
 

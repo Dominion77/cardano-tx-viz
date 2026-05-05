@@ -1,18 +1,15 @@
 use anyhow::{Context, Result};
 use pallas_codec::minicbor;
-use pallas_primitives::conway::{
-    Value as PallasValue, Tx, TransactionBody,
-    DatumOption, PostAlonzoTransactionOutput,
-    Metadatum, PseudoTransactionOutput, WitnessSet,
-    AuxiliaryData, Metadata,
-};
 use pallas_crypto::hash::Hasher;
+use pallas_primitives::conway::{
+    AuxiliaryData, DatumOption, Metadata, Metadatum, PostAlonzoTransactionOutput,
+    PseudoTransactionOutput, TransactionBody, Tx, Value as PallasValue, WitnessSet,
+};
 use std::collections::HashMap;
 
-use crate::decoder::cbor::{try_decode_as_plutus_data, bytes_to_hex};
+use crate::decoder::cbor::{bytes_to_hex, try_decode_as_plutus_data};
 use crate::decoder::types::{
-    TxView, InputView, OutputView, DatumView, RedeemerView, 
-    AssetView, PlutusNode
+    AssetView, DatumView, InputView, OutputView, PlutusNode, RedeemerView, TxView,
 };
 
 pub struct TxParser {
@@ -28,8 +25,7 @@ impl TxParser {
     }
 
     pub fn parse_transaction(&mut self, tx_cbor: &[u8]) -> Result<TxView> {
-        let tx: Tx = minicbor::decode(tx_cbor)
-            .context("Failed to decode transaction CBOR")?;
+        let tx: Tx = minicbor::decode(tx_cbor).context("Failed to decode transaction CBOR")?;
 
         let hash = self.compute_tx_hash(tx_cbor)?;
         let inputs = self.parse_inputs(&tx.transaction_body)?;
@@ -49,17 +45,17 @@ impl TxParser {
     fn compute_tx_hash(&self, tx_cbor: &[u8]) -> Result<String> {
         let tx: Tx = minicbor::decode(tx_cbor)?;
         let tx_body_bytes = minicbor::to_vec(&tx.transaction_body)?;
-        
+
         let hash = Hasher::<256>::hash(&tx_body_bytes);
         Ok(hex::encode(hash))
     }
 
     fn parse_inputs(&self, tx_body: &TransactionBody) -> Result<Vec<InputView>> {
         let mut inputs = Vec::new();
-        
+
         for input in &tx_body.inputs {
             let input_view = InputView {
-                tx_hash: hex::encode(&input.transaction_id),
+                tx_hash: hex::encode(input.transaction_id),
                 index: input.index as u32,
                 address: String::new(), // Will be populated from UTxO data
                 value: Vec::new(),      // Will be populated from UTxO data
@@ -67,22 +63,25 @@ impl TxParser {
             };
             inputs.push(input_view);
         }
-        
+
         Ok(inputs)
     }
 
     fn parse_outputs(&mut self, tx_body: &TransactionBody) -> Result<Vec<OutputView>> {
         let mut outputs = Vec::new();
-        
+
         for output in &tx_body.outputs {
             let output_view = self.parse_output(output)?;
             outputs.push(output_view);
         }
-        
+
         Ok(outputs)
     }
 
-    fn parse_output(&mut self, output: &PseudoTransactionOutput<PostAlonzoTransactionOutput>) -> Result<OutputView> {
+    fn parse_output(
+        &mut self,
+        output: &PseudoTransactionOutput<PostAlonzoTransactionOutput>,
+    ) -> Result<OutputView> {
         match output {
             PseudoTransactionOutput::PostAlonzo(post_alonzo) => {
                 let address = hex::encode(post_alonzo.address.to_vec());
@@ -97,7 +96,7 @@ impl TxParser {
                 } else {
                     None
                 };
-                
+
                 Ok(OutputView {
                     address,
                     value,
@@ -119,7 +118,7 @@ impl TxParser {
 
     fn parse_value(&self, value: &PallasValue) -> Result<Vec<AssetView>> {
         let mut assets = Vec::new();
-        
+
         match value {
             PallasValue::Coin(ada) => {
                 assets.push(AssetView {
@@ -135,18 +134,18 @@ impl TxParser {
                     asset_name: "lovelace".to_string(),
                     amount: *ada,
                 });
-                
+
                 // Add other assets
                 for (policy_id_bytes, assets_map) in multi_asset.iter() {
                     let policy_id = hex::encode(policy_id_bytes.as_ref());
-                    
+
                     for (asset_name_bytes, amount) in assets_map.iter() {
                         let asset_name: String = if asset_name_bytes.is_empty() {
                             String::new()
                         } else {
                             hex::encode(asset_name_bytes.to_vec())
                         };
-                        
+
                         assets.push(AssetView {
                             policy_id: policy_id.clone(),
                             asset_name,
@@ -156,7 +155,7 @@ impl TxParser {
                 }
             }
         }
-        
+
         Ok(assets)
     }
 
@@ -165,7 +164,7 @@ impl TxParser {
             DatumOption::Hash(hash) => {
                 // Datum hash - will be resolved later via fetcher
                 let hash_hex = hex::encode(hash);
-                
+
                 // Check cache first
                 if let Some(decoded) = self.datum_cache.get(&hash_hex) {
                     return Ok(Some(DatumView {
@@ -173,7 +172,7 @@ impl TxParser {
                         decoded: decoded.clone(),
                     }));
                 }
-                
+
                 // Placeholder - actual resolution happens in app layer
                 Ok(Some(DatumView {
                     raw_cbor: hash_hex.clone(),
@@ -185,13 +184,16 @@ impl TxParser {
                 let data_bytes = minicbor::to_vec(data)?;
                 let raw_cbor = bytes_to_hex(&data_bytes);
                 let decoded = try_decode_as_plutus_data(&data_bytes);
-                
+
                 Ok(Some(DatumView { raw_cbor, decoded }))
             }
         }
     }
 
-    fn parse_script_ref_inner(&self, script: &pallas_primitives::conway::ScriptRef) -> Result<Option<String>> {
+    fn parse_script_ref_inner(
+        &self,
+        script: &pallas_primitives::conway::ScriptRef,
+    ) -> Result<Option<String>> {
         use pallas_primitives::conway::PseudoScript;
         let script_type = match script {
             PseudoScript::NativeScript(_) => "NativeScript",
@@ -204,9 +206,9 @@ impl TxParser {
 
     fn parse_redeemers(&self, witness_set: &WitnessSet) -> Result<Vec<RedeemerView>> {
         let mut redeemers = Vec::new();
-        
+
         if let Some(ref redeemer_set) = witness_set.redeemer {
-            for (_index, (key, value)) in redeemer_set.iter().enumerate() {
+            for (key, value) in redeemer_set.iter() {
                 let tag = match key.tag {
                     pallas_primitives::conway::RedeemerTag::Spend => "Spend".to_string(),
                     pallas_primitives::conway::RedeemerTag::Mint => "Mint".to_string(),
@@ -215,15 +217,12 @@ impl TxParser {
                     pallas_primitives::conway::RedeemerTag::Vote => "Vote".to_string(),
                     pallas_primitives::conway::RedeemerTag::Propose => "Propose".to_string(),
                 };
-                
+
                 let data_bytes = minicbor::to_vec(&value.data)?;
                 let data = try_decode_as_plutus_data(&data_bytes);
-                
-                let ex_units = (
-                    value.ex_units.mem,
-                    value.ex_units.steps,
-                );
-                
+
+                let ex_units = (value.ex_units.mem, value.ex_units.steps);
+
                 redeemers.push(RedeemerView {
                     tag,
                     index: key.index,
@@ -232,7 +231,7 @@ impl TxParser {
                 });
             }
         }
-        
+
         Ok(redeemers)
     }
 
@@ -242,7 +241,7 @@ impl TxParser {
             pallas_codec::utils::Nullable::Some(aux_data) => {
                 let metadata = self.extract_metadata(aux_data);
                 if let Some(meta) = metadata {
-                    let json = self.metadata_kvp_to_json(&meta)?;
+                    let json = self.metadata_kvp_to_json(meta)?;
                     Ok(Some(json))
                 } else {
                     Ok(None)
@@ -276,13 +275,17 @@ impl TxParser {
                     if let Metadatum::Text(key_str) = key {
                         json_map.insert(key_str.clone(), self.metadatum_to_json(value)?);
                     } else if let Metadatum::Int(key_int) = key {
-                        json_map.insert(format!("{}", i128::from(*key_int)), self.metadatum_to_json(value)?);
+                        json_map.insert(
+                            format!("{}", i128::from(*key_int)),
+                            self.metadatum_to_json(value)?,
+                        );
                     }
                 }
                 Ok(serde_json::Value::Object(json_map))
             }
             Metadatum::Array(items) => {
-                let json_items: Result<Vec<_>> = items.iter()
+                let json_items: Result<Vec<_>> = items
+                    .iter()
                     .map(|item| self.metadatum_to_json(item))
                     .collect();
                 Ok(serde_json::Value::Array(json_items?))
@@ -291,12 +294,8 @@ impl TxParser {
                 let val: i128 = (*n).into();
                 Ok(serde_json::Value::Number((val as i64).into()))
             }
-            Metadatum::Bytes(bytes) => {
-                Ok(serde_json::Value::String(hex::encode(bytes.to_vec())))
-            }
-            Metadatum::Text(s) => {
-                Ok(serde_json::Value::String(s.clone()))
-            }
+            Metadatum::Bytes(bytes) => Ok(serde_json::Value::String(hex::encode(bytes.to_vec()))),
+            Metadatum::Text(s) => Ok(serde_json::Value::String(s.clone())),
         }
     }
 
@@ -328,7 +327,7 @@ mod tests {
         let parser = TxParser::new();
         let value = PallasValue::Coin(1000000);
         let assets = parser.parse_value(&value).unwrap();
-        
+
         assert_eq!(assets.len(), 1);
         assert_eq!(assets[0].policy_id, "ada");
         assert_eq!(assets[0].amount, 1000000);

@@ -1,3 +1,4 @@
+use crate::app::TreeNode;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -5,11 +6,16 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, StatefulWidget, Widget},
 };
-use crate::app::TreeNode;
 
 #[derive(Debug, Clone)]
 pub struct TxTreeWidget<'a> {
     block: Option<Block<'a>>,
+}
+
+impl<'a> Default for TxTreeWidget<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<'a> TxTreeWidget<'a> {
@@ -70,28 +76,20 @@ impl<'a> StatefulWidget for TxTreeWidget<'a> {
                     .bg(Color::DarkGray)
             } else {
                 match node {
-                    TreeNode::InputsHeader { .. } |
-                    TreeNode::OutputsHeader { .. } |
-                    TreeNode::RedeemersHeader { .. } |
-                    TreeNode::Metadata { .. } => {
-                        Style::default().fg(Color::Cyan)
-                    }
-                    TreeNode::Input { .. } |
-                    TreeNode::Output { .. } |
-                    TreeNode::Redeemer { .. } => {
-                        Style::default().fg(Color::White)
-                    }
-                    TreeNode::InputDatum { .. } |
-                    TreeNode::OutputDatum { .. } => {
+                    TreeNode::InputsHeader { .. }
+                    | TreeNode::OutputsHeader { .. }
+                    | TreeNode::RedeemersHeader { .. }
+                    | TreeNode::Metadata { .. } => Style::default().fg(Color::Cyan),
+                    TreeNode::Input { .. }
+                    | TreeNode::Output { .. }
+                    | TreeNode::Redeemer { .. } => Style::default().fg(Color::White),
+                    TreeNode::InputDatum { .. } | TreeNode::OutputDatum { .. } => {
                         Style::default().fg(Color::Green)
                     }
                 }
             };
 
-            let line = Line::from(Span::styled(
-                format!("{}{}", indent, display_text),
-                style,
-            ));
+            let line = Line::from(Span::styled(format!("{}{}", indent, display_text), style));
 
             buf.set_line(inner_area.x, y, &line, inner_area.width);
         }
@@ -138,7 +136,7 @@ impl TreeState {
             visible.push(node.clone());
 
             let should_show_children = idx < self.expanded.len() && self.expanded[idx];
-            
+
             if !should_show_children {
                 skip_until_next_sibling = true;
                 current_depth = node.depth();

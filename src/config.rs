@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
-
 use crate::fetcher::{FetcherConfig, Network};
 
 #[derive(Debug, Deserialize)]
@@ -18,14 +17,13 @@ pub struct BlockfrostConfig {
 impl Config {
     pub fn load() -> Result<Self> {
         let _ = dotenv::dotenv();
-        
+
         let config_path = dirs::config_dir()
             .map(|p| p.join("cardano-tx-viz").join("config.toml"))
             .filter(|p| p.exists());
 
         let mut config = if let Some(path) = config_path {
-            let content = std::fs::read_to_string(&path)
-                .context("Failed to read config file")?;
+            let content = std::fs::read_to_string(&path).context("Failed to read config file")?;
             toml::from_str(&content).context("Failed to parse config file")?
         } else {
             // Return default config if no file exists
@@ -34,12 +32,12 @@ impl Config {
                 default_network: Some("mainnet".to_string()),
             }
         };
-        
+
         // Override with environment variable if present
         if let Ok(api_key) = std::env::var("BLOCKFROST_API_KEY") {
             config.blockfrost = Some(BlockfrostConfig { api_key });
         }
-        
+
         Ok(config)
     }
 

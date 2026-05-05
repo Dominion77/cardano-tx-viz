@@ -6,5 +6,5 @@ pub mod fetcher;
 pub mod ui;
 
 pub use app::{App, FetchState, InputMode, TreeNode};
-pub use decoder::{TxView, PlutusNode, AssetView, TxParser};
+pub use decoder::{AssetView, PlutusNode, TxParser, TxView};
 pub use fetcher::{FetcherConfig, Network, TxFetcher};

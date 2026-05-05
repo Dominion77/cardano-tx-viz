@@ -75,9 +75,7 @@ impl FetcherConfig {
             FetcherConfig::Blockfrost { api_key, network } => {
                 Box::new(blockfrost::BlockfrostFetcher::new(api_key, network))
             }
-            FetcherConfig::Koios { network } => {
-                Box::new(koios::KoiosFetcher::new(network))
-            }
+            FetcherConfig::Koios { network } => Box::new(koios::KoiosFetcher::new(network)),
         }
     }
 }
