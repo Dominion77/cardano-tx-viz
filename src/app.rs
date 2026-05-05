@@ -387,13 +387,41 @@ impl App {
             KeyCode::Char('r') => {
                 self.copy_raw_hex_to_clipboard();
             }
+            KeyCode::Char('j') => {
+                // Scroll detail panel down (vim-style)
+                self.detail_scroll += 1;
+            }
+            KeyCode::Char('k') => {
+                // Scroll detail panel up (vim-style)
+                if self.detail_scroll > 0 {
+                    self.detail_scroll = self.detail_scroll.saturating_sub(1);
+                }
+            }
+            KeyCode::Char('d') => {
+                // Scroll detail panel down half page
+                self.detail_scroll += 10;
+            }
+            KeyCode::Char('u') => {
+                // Scroll detail panel up half page
+                if self.detail_scroll > 0 {
+                    self.detail_scroll = self.detail_scroll.saturating_sub(10);
+                }
+            }
+            KeyCode::Char('g') => {
+                // Scroll to top of detail panel
+                self.detail_scroll = 0;
+            }
+            KeyCode::Char('G') => {
+                // Scroll to bottom of detail panel (set to large number, will be clamped by UI)
+                self.detail_scroll = 10000;
+            }
             KeyCode::PageUp => {
                 if self.detail_scroll > 0 {
-                    self.detail_scroll = self.detail_scroll.saturating_sub(5);
+                    self.detail_scroll = self.detail_scroll.saturating_sub(20);
                 }
             }
             KeyCode::PageDown => {
-                self.detail_scroll += 5;
+                self.detail_scroll += 20;
             }
             _ => {}
         }
@@ -587,8 +615,8 @@ impl App {
                             if let Some(asset) = output.value.iter().find(|a| a.policy_id != "ada") {
                                 crate::clipboard::copy_policy_id(&asset.policy_id)
                             } else {
-                                // Copy ADA as fallback
-                                crate::clipboard::copy_to_clipboard("ada")
+                                // No native tokens, only ADA
+                                Err(anyhow::anyhow!("This output only contains ADA (no native tokens/policy IDs)"))
                             }
                         } else {
                             Err(anyhow::anyhow!("Output not found"))
@@ -599,13 +627,13 @@ impl App {
                             if let Some(asset) = input.value.iter().find(|a| a.policy_id != "ada") {
                                 crate::clipboard::copy_policy_id(&asset.policy_id)
                             } else {
-                                crate::clipboard::copy_to_clipboard("ada")
+                                Err(anyhow::anyhow!("This input only contains ADA (no native tokens/policy IDs)"))
                             }
                         } else {
                             Err(anyhow::anyhow!("Input not found"))
                         }
                     }
-                    _ => Err(anyhow::anyhow!("Select an Input or Output to copy policy ID")),
+                    _ => Err(anyhow::anyhow!("Select an Input or Output with native tokens to copy policy ID")),
                 }
             } else {
                 Err(anyhow::anyhow!("No node selected"))
@@ -615,7 +643,7 @@ impl App {
         };
 
         if let Err(e) = result {
-            self.status_message = Some(format!("Cannot copy policy ID: {}", e));
+            self.status_message = Some(format!("{}", e));
         } else {
             self.status_message = Some("Policy ID copied to clipboard".to_string());
         }
@@ -649,13 +677,14 @@ impl App {
                     }
                     TreeNode::Redeemer { index, .. } => {
                         if let Some(redeemer) = tx.redeemers.get(*index) {
-                            // For redeemers, copy the decoded data as pretty-printed
+                            // For redeemers, copy the raw CBOR hex
+                            // Note: redeemers don't have raw_cbor field, so we copy the decoded data
                             crate::clipboard::copy_plutus_data(&redeemer.data)
                         } else {
                             Err(anyhow::anyhow!("Redeemer not found"))
                         }
                     }
-                    _ => Err(anyhow::anyhow!("Select a Datum or Redeemer to copy raw CBOR")),
+                    _ => Err(anyhow::anyhow!("Navigate to a Datum or Redeemer node to copy raw CBOR")),
                 }
             } else {
                 Err(anyhow::anyhow!("No node selected"))
@@ -665,9 +694,9 @@ impl App {
         };
 
         if let Err(e) = result {
-            self.status_message = Some(format!("Cannot copy raw CBOR: {}", e));
+            self.status_message = Some(format!("{}", e));
         } else {
-            self.status_message = Some("Raw CBOR copied to clipboard".to_string());
+            self.status_message = Some("Raw CBOR hex copied to clipboard".to_string());
         }
     }
 

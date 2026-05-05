@@ -1,6 +1,7 @@
-# cardano-tx-viz
-
-🔍 A terminal-based Cardano transaction debugger for Aiken/Plutus V3 developers.
+# Cardano Transaction Visualizer (CLI/TUI)  -cardano-tx-viz
+While block explorers exist, there is a lack of high-speed, terminal-based tools specifically for debugging Cardano transaction structures (especially Plutus V3 or Aiken datum/redeemer data).
+cardano-tx-viz is a terminal-based UI (TUI) where a user can input a transaction hash and see a hierarchical tree of inputs, outputs, and specifically, a decoded view of the Datum.
+For Aiken/Plutus V3 developers.
 
 [![Crates.io](https://img.shields.io/crates/v/cardano-tx-viz.svg)](https://crates.io/crates/cardano-tx-viz)
 [![Documentation](https://docs.rs/cardano-tx-viz/badge.svg)](https://docs.rs/cardano-tx-viz)
@@ -40,13 +41,18 @@ Pre-built binaries for Linux, macOS, and Windows are available on the [releases 
 # Install
 cargo install cardano-tx-viz
 
-# Run
+# Run (mainnet by default)
 cardano-tx-viz
+
+# Use a different or maybe a speicfic network to fetch transaction directly
+cardano-tx-viz --network preprod
+cardano-tx-viz --network preview
+cardano-tx-viz --network mainnet
 
 # Fetch a transaction directly
 cardano-tx-viz --hash f2754b2d3a9e9e6f4b3e3d9f8c5e5a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8
 
-# Use a different network
+# Use a different network to fetch transaction directly
 cardano-tx-viz --network preprod --hash <tx-hash>
 ```
 
@@ -56,17 +62,34 @@ cardano-tx-viz --network preprod --hash <tx-hash>
 
 For better rate limits and reliability, configure a Blockfrost API key:
 
-**Option 1: Config file** (`~/.config/cardano-tx-viz/config.toml`):
+**Option 1: .env file** (Recommended - in project root):
+```env
+BLOCKFROST_API_KEY=mainnetYourApiKeyHere
+or 
+BLOCKFROST_API_KEY=preprodYourApiKeyHere
+or
+BLOCKFROST_API_KEY=previewYourApiKeyHere
+
+As the case may be
+```
+
+**Option 2: Config file** (`~/.config/cardano-tx-viz/config.toml`):
 ```toml
 [blockfrost]
-api_key = "your_blockfrost_api_key_here"
+api_key = "mainnetYourApiKeyHere"
 default_network = "mainnet"
 ```
 
-**Option 2: Environment variable**:
+**Option 3: Environment variable**:
 ```bash
-export BLOCKFROST_API_KEY="your_api_key_here"
+# Windows PowerShell
+$env:BLOCKFROST_API_KEY="mainnetYourApiKeyHere"
+
+# Linux/Mac
+export BLOCKFROST_API_KEY="mainnetYourApiKeyHere"
 ```
+
+Blockfrost key begins with "preprod" or "preview" if you are on any of those networks
 
 If no API key is provided, the app falls back to Koios public endpoints automatically.
 
@@ -97,7 +120,18 @@ OPTIONS:
 | `↑` / `↓` | Navigate tree nodes |
 | `→` / `Space` | Expand tree node |
 | `←` | Collapse tree node |
-| `PageUp` / `PageDown` | Scroll detail panel |
+
+#### Detail Panel Scrolling
+| Key | Action |
+|-----|--------|
+| `j` | Scroll down 1 line (vim-style) |
+| `k` | Scroll up 1 line (vim-style) |
+| `d` | Scroll down half page (10 lines) |
+| `u` | Scroll up half page (10 lines) |
+| `g` | Jump to top |
+| `G` | Jump to bottom |
+| `PageUp` | Scroll up full page (20 lines) |
+| `PageDown` | Scroll down full page (20 lines) |
 
 #### Clipboard Operations
 | Key | Action |
@@ -106,6 +140,11 @@ OPTIONS:
 | `p` | Copy policy ID of selected asset |
 | `r` | Copy raw CBOR/datum hex |
 | `Ctrl+V` | Paste (in search mode) |
+
+p = policy ID (only for outputs/inputs with tokens)
+r = raw CBOR hex (only for datums/redeemers)
+c = formatted content (works on anything)
+
 
 #### Application
 | Key | Action |

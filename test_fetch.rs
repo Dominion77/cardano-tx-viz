@@ -1,4 +1,4 @@
-use cardano_tx_viz::fetcher::{FetcherConfig, Network, TxFetcher};
+use cardano_tx_viz::fetcher::{FetcherConfig, Network};
 
 #[tokio::main]
 async fn main() {
