@@ -44,7 +44,7 @@ cargo install cardano-tx-viz
 # Run (mainnet by default)
 cardano-tx-viz
 
-# Use a different or maybe a speicfic network to fetch transaction directly
+# Use a different or maybe a specific network to fetch transaction directly
 cardano-tx-viz --network preprod
 cardano-tx-viz --network preview
 cardano-tx-viz --network mainnet
