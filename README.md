@@ -141,6 +141,7 @@ OPTIONS:
 | `r` | Copy raw CBOR/datum hex |
 | `Ctrl+V` | Paste (in search mode) |
 
+### Please Take Note
 p = policy ID (only for outputs/inputs with tokens)
 r = raw CBOR hex (only for datums/redeemers)
 c = formatted content (works on anything)
