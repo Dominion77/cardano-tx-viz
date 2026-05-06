@@ -1,6 +1,6 @@
 [package]
 name = "cardano-tx-viz"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 default-run = "cardano-tx-viz"
 description = "Terminal-based UI for visualizing and debugging Cardano transactions with Plutus V3 datum/redeemer support"
