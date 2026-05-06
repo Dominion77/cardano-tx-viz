@@ -2,6 +2,9 @@ use anyhow::{Context, Result};
 use arboard::Clipboard;
 use tracing::debug;
 
+#[cfg(target_os = "linux")]
+use tracing::warn;
+
 /// Copy text to system clipboard
 pub fn copy_to_clipboard(text: &str) -> Result<()> {
     match Clipboard::new() {
